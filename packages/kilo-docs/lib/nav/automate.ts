@@ -15,7 +15,29 @@ export const AutomateNav: NavSection[] = [
           { href: "/automate/code-reviews/gitlab", children: "GitLab" },
         ],
       },
-      { href: "/automate/agent-manager", children: "Agent Manager" },
+      { href: "/automate/agent-manager", children: "Agent Manager", platform: "next" },
+      {
+        href: "/automate/kiloclaw/overview",
+        children: "KiloClaw",
+        subLinks: [
+          { href: "/automate/kiloclaw/overview", children: "Overview" },
+          { href: "/automate/kiloclaw/dashboard", children: "Dashboard" },
+          {
+            href: "/automate/kiloclaw/pre-installed-software",
+            children: "Pre-installed Software",
+          },
+          { href: "/automate/kiloclaw/control-ui", children: "Control UI" },
+          {
+            href: "/automate/kiloclaw/chat-platforms",
+            children: "Chat Platforms",
+          },
+          {
+            href: "/automate/kiloclaw/troubleshooting",
+            children: "Troubleshooting",
+          },
+          { href: "/automate/kiloclaw/pricing", children: "Pricing" },
+        ],
+      },
     ],
   },
   {
@@ -25,10 +47,12 @@ export const AutomateNav: NavSection[] = [
       {
         href: "/automate/extending/shell-integration",
         children: "Shell Integration",
+        platform: "classic",
       },
       {
         href: "/automate/extending/auto-launch",
         children: "Auto-launch Configuration",
+        platform: "classic",
       },
       {
         href: "/automate/mcp/overview",
@@ -38,8 +62,9 @@ export const AutomateNav: NavSection[] = [
           {
             href: "/automate/mcp/using-in-kilo-code",
             children: "Using MCP in Kilo Code",
+            platform: "classic",
           },
-          { href: "/automate/mcp/using-in-cli", children: "Using MCP in CLI" },
+          { href: "/automate/mcp/using-in-cli", children: "Using MCP in CLI", platform: "next" },
           { href: "/automate/mcp/what-is-mcp", children: "What is MCP" },
           {
             href: "/automate/mcp/server-transports",
@@ -53,8 +78,8 @@ export const AutomateNav: NavSection[] = [
   {
     title: "Tools",
     links: [
-      { href: "/automate/how-tools-work", children: "How Tools Work" },
-      { href: "/automate/tools", children: "Tools Details" },
+      { href: "/automate/how-tools-work", children: "How Tools Work", platform: "classic" },
+      { href: "/automate/tools", children: "Tools Details", platform: "classic" },
     ],
   },
 ]
