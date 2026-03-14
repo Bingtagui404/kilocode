@@ -5,7 +5,7 @@ description: "Integrate Kilo Code with your shell environment"
 
 # Terminal Shell Integration
 
-Terminal shell integration enables Kilo Code to execute commands and intelligently process their output. The Classic extension and the new CLI & Extension handle shell execution differently — choose the tab that matches your setup.
+Terminal shell integration enables Kilo Code to execute commands and intelligently process their output. The Classic extension and the new extension & CLI handle shell execution differently — choose the tab that matches your setup.
 
 {% tabs %}
 {% tab label="Classic Extension" %}
@@ -344,7 +344,7 @@ The [VS Code Terminal Integration Test Extension](https://github.com/KJ7LNW/vsce
    - Open an issue with these details to help improve shell integration
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 ## How Shell Execution Works
 

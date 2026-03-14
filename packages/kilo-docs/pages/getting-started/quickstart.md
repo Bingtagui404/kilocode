@@ -5,11 +5,14 @@ description: "Get up and running with Kilo Code in minutes"
 
 # Quickstart
 
+After you [install Kilo Code](/docs/getting-started/installing) and [set up authentication](/docs/getting-started/setup-authentication), follow the guide for your platform below.
+
+{% tabs %}
+{% tab label="Classic Extension" %}
+
 ## Video Tour
 
 {% youtube url="https://www.youtube.com/watch?v=pO7zRLQS-p0" caption="This quick tour shows how Kilo Code handles a simple request from start to finish" /%}
-
-After you [set up Kilo Code](/docs/getting-started/setup-authentication), follow these steps:
 
 ## Step by Step Guide
 
@@ -66,20 +69,112 @@ Kilo Code works iteratively. After each action, it waits for your feedback befor
 
 {% image src="/docs/img/your-first-task/your-first-task-8.png" alt="Final result of a completed task showing the iteration process" width="500" caption="After completing the task, Kilo Code shows the final result and awaits your next instruction." /%}
 
-## Conclusion
+{% /tab %}
+{% tab label="New Extension" %}
 
-You've completed your first task. Along the way you learned:
+## Step by Step Guide
 
-- How to interact with Kilo Code using natural language
-- Why approval keeps you in control
-- How iteration lets the AI refine its work
+### Step 1: Open Kilo Code
 
-Ready for more? Here are some next steps:
+Click the Kilo Code icon in the VS Code Primary Side Bar to open the chat panel. If you don't see the icon, verify the [pre-release extension is installed](/docs/getting-started/installing).
+
+### Step 2: Type Your Task
+
+Type a clear, concise description of what you want Kilo Code to do in the chat box. The same examples work here:
+
+- "Create a file named `hello.txt` containing 'Hello, world!'."
+- "Write a Python function that adds two numbers."
+- "Create an HTML file for a simple website with the title 'Kilo test'"
+
+No special commands or syntax needed—just use plain English.
+
+### Step 3: Send Your Task
+
+Press **Enter** to send.
+
+### Step 4: Review & Approve Actions
+
+Kilo Code analyzes your request and proposes actions. By default, most tools prompt for approval before executing. You'll see the tool name, arguments, and can approve or reject each action.
+
+To change which actions require approval, open **Settings** (gear icon) and go to the **Auto-Approve** tab. You can set each tool to Allow, Ask, or Deny. See [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions) for details.
+
+### Step 5: Iterate
+
+Kilo Code works iteratively. Continue giving feedback or follow-up instructions until your task is complete.
+
+### Key Differences from Classic
+
+- **Settings** are managed via `kilo.json` config files (the Settings webview reads and writes the same files)
+- **Permissions** use a granular per-tool system instead of broad approval categories
+- **Modes** are called "agents" and configured as `.md` files or via the `agent` config key
+- **Autocomplete** uses FIM (Fill-in-the-Middle) with Codestral
+
+{% /tab %}
+{% tab label="CLI" %}
+
+## CLI Quickstart
+
+### Step 1: Open a Terminal
+
+Navigate to your project directory:
+
+```bash
+cd /path/to/your/project
+```
+
+### Step 2: Launch Kilo
+
+Run the `kilo` command to start the interactive TUI (terminal user interface):
+
+```bash
+kilo
+```
+
+If this is your first time, run `kilo auth login` first to authenticate (see [Setup & Authentication](/docs/getting-started/setup-authentication)).
+
+### Step 3: Type Your Task
+
+Type your request in natural language at the prompt. The same examples work here:
+
+- "Create a file named `hello.txt` containing 'Hello, world!'."
+- "Write a Python function that adds two numbers."
+- "Create an HTML file for a simple website with the title 'Kilo test'"
+
+Press **Enter** to send.
+
+### Step 4: Review & Approve Actions
+
+Kilo analyzes your request and proposes actions. By default, most tools prompt for approval before executing. You'll see the tool name, arguments, and can approve or reject each action.
+
+To change permission defaults, configure the `permission` key in your `kilo.json` config file. See [Auto-Approving Actions](/docs/getting-started/settings/auto-approving-actions) for details.
+
+### Step 5: Iterate
+
+Kilo works iteratively. Continue giving feedback or follow-up instructions until your task is complete.
+
+### One-Shot Mode
+
+For quick, non-interactive tasks, use `kilo run`:
+
+```bash
+kilo run "add error handling to src/api.ts"
+```
+
+Add `--auto` to auto-approve all permissions (use carefully):
+
+```bash
+kilo run --auto "fix the failing tests in test/auth.test.ts"
+```
+
+{% /tab %}
+{% /tabs %}
+
+## Next Steps
 
 - **[Autocomplete](/docs/code-with-ai/features/autocomplete)** — Get inline code suggestions as you type
 - **[Modes](/docs/code-with-ai/agents/using-modes)** — Explore different modes for different tasks
 - **[Git commit generation](/docs/code-with-ai/features/git-commit-generation)** — Automatically generate commit messages
 
 {% callout type="tip" %}
-**Accelerate development:** Check out multiple copies of your repository and run Kilo Code on all of them in parallel (using git to resolve any conflicts, same as with human devs). This can dramatically speed up development on large projects.
+**Accelerate development:** Check out multiple copies of your repository and run Kilo Code on all of them in parallel (using git to resolve any conflicts, same as with human devs). This can dramatically speed up development on large projects. The [Agent Manager](/docs/automate/agent-manager) can help orchestrate this with git worktree isolation.
 {% /callout %}

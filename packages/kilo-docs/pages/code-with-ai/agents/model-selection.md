@@ -19,6 +19,27 @@ This isn't benchmarks from some lab. It's real usage data from developers like y
 
 While the specifics change constantly, some principles stay consistent:
 
+### How to Select and Switch Models
+
+{% tabs %}
+{% tab label="Classic Extension" %}
+
+- Use the **model dropdown** in the chat panel to select a model for each conversation.
+- Configure **API profiles** in Settings to group provider + model combinations and switch between them quickly.
+- Models are **sticky per mode** — each mode (Code, Architect, Debug, etc.) remembers the last model you selected.
+  {% /tab %}
+  {% tab label="New CLI" %}
+- Set the default model with the `model` key in your `kilo.json` config file.
+- In the TUI, use the **model picker** (keybind to cycle through configured models).
+- For non-interactive use, pass `--model` flag to `kilo run` (e.g., `kilo run --model claude-sonnet-4-20250514`).
+- Configure per-agent models in the agents section of your config.
+  {% /tab %}
+  {% tab label="New Extension" %}
+- Open the **Settings webview** in the extension sidebar to select a model.
+- Alternatively, set models directly in the `kilo.json` config file (the extension reads the same config as the CLI).
+  {% /tab %}
+  {% /tabs %}
+
 **For complex coding tasks**: Premium models (Claude Sonnet/Opus, GPT-5 class, Gemini Pro) typically handle nuanced requirements, large refactors, and architectural decisions better.
 
 **For everyday coding**: Mid-tier models often provide the best balance of speed, cost, and quality. They're fast enough to keep your flow state intact and capable enough for most tasks.

@@ -58,7 +58,7 @@ Route requests through unified APIs with additional features:
 - **Regional** - Better latency in certain locations
 
 {% callout type="note" %}
-All API keys use VS Code's Secret Storage—never stored in plain text.
+In the **Classic Extension**, API keys use VS Code's Secret Storage. In the **New Extension and CLI**, keys are set via environment variables or referenced in `kilo.json` config files. See individual provider pages for setup instructions for each platform.
 {% /callout %}
 
 ## Next Steps

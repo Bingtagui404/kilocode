@@ -28,14 +28,19 @@ MCP server configurations can be managed at two levels: **global** (applies acro
 Project-level configs can be committed to version control to share with your team.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, open **Settings → MCP** to add and manage MCP servers through the UI. Under the hood the extension reads the same config files as the CLI — see the **CLI** tab for file paths and format.
+
+{% /tab %}
+{% tab label="CLI" %}
 
 The CLI accepts several config filenames. The recommended file is `kilo.json`:
 
-| Scope       | Recommended Path                     | Also supported              |
-| ----------- | ------------------------------------ | --------------------------- |
-| **Global**  | `~/.config/kilo/kilo.json`           | `kilo.jsonc`, `config.json` |
-| **Project** | `./kilo.json` or `./.kilo/kilo.json` | `kilo.jsonc`                |
+| Scope       | Recommended Path                     | Also supported             |
+| ----------- | ------------------------------------ | -------------------------- |
+| **Global**  | `~/.config/kilo/kilo.json`           | `kilo.json`, `config.json` |
+| **Project** | `./kilo.json` or `./.kilo/kilo.json` | `kilo.json`                |
 
 {% /tab %}
 {% /tabs %}
@@ -66,7 +71,12 @@ Both global and project-level files use a JSON format with a `mcpServers` object
 _Example of MCP Server config in Kilo Code (STDIO Transport)_
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, open **Settings → MCP** and click **Add Server** to configure a new server through the UI. You can also edit the config files directly — see the **CLI** tab for the JSON format.
+
+{% /tab %}
+{% tab label="CLI" %}
 
 Add MCP servers under the `mcp` key in your config file. Each server has a unique name that you can reference in prompts.
 
@@ -123,7 +133,12 @@ For more in-depth information about how STDIO transport works, see [STDIO Transp
 ```
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, open **Settings → MCP**, click **Add Server**, and choose **Local (stdio)**. Fill in the command, arguments, and optional environment variables through the UI. You can also edit the config files directly — see the **CLI** tab for the JSON format.
+
+{% /tab %}
+{% tab label="CLI" %}
 
 ```json
 {
@@ -182,7 +197,12 @@ Used for remote servers accessed over HTTP/HTTPS:
 ```
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, open **Settings → MCP**, click **Add Server**, and choose **Remote (HTTP)**. Enter the server URL and optional headers through the UI. You can also edit the config files directly — see the **CLI** tab for the JSON format.
+
+{% /tab %}
+{% tab label="CLI" %}
 
 ```json
 {
@@ -289,7 +309,18 @@ MCP tool auto-approval works on a per-tool basis and is disabled by default. To 
 When enabled, Kilo Code will automatically approve this specific tool without prompting. Note that the global "Use MCP servers" setting takes precedence - if it's disabled, no MCP tools will be auto-approved.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, manage MCP servers from **Settings → MCP**:
+
+- **Add a server**: Click **Add Server** and fill in the details
+- **Enable/disable**: Toggle a server on or off without removing its configuration
+- **Delete**: Remove a server from the list
+
+The extension also supports the `{env:VARIABLE_NAME}` syntax in config files to reference environment variables (see the **CLI** tab for details).
+
+{% /tab %}
+{% tab label="CLI" %}
 
 ### CLI Commands
 
@@ -369,7 +400,12 @@ For macOS or Linux, you would use a different configuration:
 The same approach can be used for other MCP servers on Windows, adjusting the package name as needed for different server types.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
+
+In the VS Code extension, use **Settings → MCP → Add Server** to add any of the examples below through the UI. You can also edit the config files directly — see the **CLI** tab for the JSON format.
+
+{% /tab %}
+{% tab label="CLI" %}
 
 ### Figma Desktop
 

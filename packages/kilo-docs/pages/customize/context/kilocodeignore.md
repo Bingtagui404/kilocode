@@ -36,9 +36,9 @@ coverage/
 ```
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
-The primary mechanism for controlling file access is the **permission system** in `kilo.jsonc`. You define tool-level permissions with glob patterns:
+The primary mechanism for controlling file access is the **permission system** in `kilo.json`. You define tool-level permissions with glob patterns:
 
 ```json
 {
@@ -94,7 +94,7 @@ Kilo Code checks `.kilocodeignore` before accessing files in tools like:
 If a file is blocked, Kilo Code will return an "access denied" message and suggest updating your `.kilocodeignore` rules.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 File access is controlled through **permission-based access control**. Each tool (`read`, `edit`, `glob`, `grep`, `write`, `bash`, etc.) has its own permission rules evaluated against glob patterns.
 
@@ -121,11 +121,11 @@ By default, ignored files are hidden from file lists. You can show them with a l
 Settings -> Context -> **Show .kilocodeignore'd files in lists and searches**
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 ### Permission Rules
 
-Permission rules are defined per-tool in `kilo.jsonc`. Patterns are evaluated in order — the first matching rule wins:
+Permission rules are defined per-tool in `kilo.json`. Patterns are evaluated in order — the first matching rule wins:
 
 ```json
 {
@@ -146,7 +146,7 @@ Permission rules are defined per-tool in `kilo.jsonc`. Patterns are evaluated in
 
 ### Migrating from .kilocodeignore
 
-If you already have a `.kilocodeignore` file, you don't need to do anything — the IgnoreMigrator reads your existing patterns and applies them as `deny` rules on `read` and `edit` tools automatically. You can optionally move your rules into `kilo.jsonc` for more granular control (e.g. denying edits but allowing reads).
+If you already have a `.kilocodeignore` file, you don't need to do anything — the IgnoreMigrator reads your existing patterns and applies them as `deny` rules on `read` and `edit` tools automatically. You can optionally move your rules into `kilo.json` for more granular control (e.g. denying edits but allowing reads).
 
 ### File Watcher Exclusions
 
@@ -171,6 +171,6 @@ Checkpoint tracking is separate from file access rules. Files blocked by `.kiloc
 
 ## Troubleshooting
 
-- **Kilo can't access a file you want:** Remove or narrow the matching rule in `.kilocodeignore` (classic) or adjust the permission rules in `kilo.jsonc` (new CLI & extension).
-- **A file still appears in lists:** In the classic extension, check the setting that shows ignored files in lists and searches. In the new CLI & extension, verify your permission and watcher ignore configuration.
+- **Kilo can't access a file you want:** Remove or narrow the matching rule in `.kilocodeignore` (classic) or adjust the permission rules in `kilo.json` (new extension & CLI).
+- **A file still appears in lists:** In the classic extension, check the setting that shows ignored files in lists and searches. In the new extension & CLI, verify your permission and watcher ignore configuration.
 - **`.kilocodeignore` patterns not working in the new platform:** Ensure the file is at the workspace root. The IgnoreMigrator reads it automatically — check that your patterns use valid `.gitignore` syntax.

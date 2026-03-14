@@ -7,8 +7,6 @@ description: "Using Orchestrator mode for complex multi-step tasks"
 
 Orchestrator Mode (formerly known as Boomerang Tasks) allows you to break down complex projects into smaller, manageable pieces. Think of it like delegating parts of your work to specialized assistants. Each subtask runs in its own context, often using a different Kilo Code mode tailored for that specific job (like [`code`](/docs/code-with-ai/agents/using-modes#code-mode-default), [`architect`](/docs/code-with-ai/agents/using-modes#architect-mode), or [`debug`](/docs/code-with-ai/agents/using-modes#debug-mode)).
 
-{% youtube url="https://www.youtube.com/watch?v=20MmJNeOODo" caption="Orchestrator Mode explained and demonstrated" /%}
-
 ## Why Use Orchestrator Mode?
 
 - **Tackle Complexity:** Break large, multi-step projects (e.g., building a full feature) into focused subtasks (e.g., design, implementation, documentation).
@@ -37,6 +35,27 @@ Orchestrator Mode provides a powerful way to manage complex development workflow
 Use subtasks to maintain clarity. If a request significantly shifts focus or requires a different expertise (mode), consider creating a subtask rather than overloading the current one.
 {% /callout %}
 
-1. This context is passed via the `message` parameter of the [`new_task`](/docs/automate/tools/new-task) tool.
-2. The mode for the subtask is specified via the `mode` parameter of the [`new_task`](/docs/automate/tools/new-task) tool during initiation.
-3. This summary is passed via the `result` parameter of the [`attempt_completion`](/docs/automate/tools/attempt-completion) tool when the subtask finishes.
+## Implementation Details
+
+{% tabs %}
+{% tab label="Classic Extension" %}
+
+{% youtube url="https://www.youtube.com/watch?v=20MmJNeOODo" caption="Orchestrator Mode explained and demonstrated" /%}
+
+In the Classic extension, orchestrator mode uses two tools to manage subtasks:
+
+1. The [`new_task`](/docs/automate/tools/new-task) tool creates a subtask. Context is passed via the `message` parameter, and the subtask's mode is specified via the `mode` parameter (e.g., `code`, `architect`, `debug`).
+2. When a subtask finishes, it calls [`attempt_completion`](/docs/automate/tools/attempt-completion). The summary is passed back to the parent via the `result` parameter.
+
+{% /tab %}
+{% tab label="New Extension & CLI" %}
+
+In the new CLI and extension, orchestrator mode uses the `task` tool to launch **subagent sessions**:
+
+- The `task` tool creates a new child session. The agent name is specified as a parameter (e.g., `general`, `explore`, `docs`).
+- Child sessions are **fully isolated** — they run in their own conversation context and do not share message history with the parent.
+- When the subagent completes its work, it returns a single message back to the parent orchestrator with the result.
+- The parent orchestrator can launch multiple subagent sessions concurrently for parallel work.
+
+{% /tab %}
+{% /tabs %}

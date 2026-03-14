@@ -85,7 +85,7 @@ If the condensed summary doesn't capture important details:
 - Important context can be reinforced after condensing by reminding Kilo Code of key details
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 ## The Solution: Auto-Compaction
 
@@ -131,7 +131,7 @@ When compaction is triggered:
 
 ## Configuration Options
 
-Compaction is configured in your `kilo.jsonc` file:
+Compaction is configured in your `kilo.json` file:
 
 ```jsonc
 {

@@ -5,7 +5,7 @@ description: "Customize how Kilo Code agents behave with per-agent prompts, inst
 
 # Custom Instructions
 
-Custom Instructions allow you to personalize how Kilo Code behaves, providing specific guidance that shapes responses, coding style, and decision-making processes. Both the Classic extension and the new CLI & extension support custom instructions, though the mechanisms differ.
+Custom Instructions allow you to personalize how Kilo Code behaves, providing specific guidance that shapes responses, coding style, and decision-making processes. Both the Classic extension and the new extension & CLI support custom instructions, though the mechanisms differ.
 
 ## What Are Custom Instructions?
 
@@ -56,9 +56,9 @@ Older naming like `.clinerules-{mode-slug}` is not the recommended path for curr
 {% /callout %}
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
 
-The new CLI and extension provide multiple layers of instruction configuration — from per-agent prompts in the UI to auto-discovered files in your project and global config.
+The new extension provides multiple layers of instruction configuration — from per-agent prompts in the Settings UI to auto-discovered files in your project and global config.
 
 ## Per-Agent Prompts
 
@@ -106,6 +106,86 @@ instructions:
   - ./docs/coding-standards.md
   - ./teams/frontend-rules.md
   - https://example.com/team-instructions.md
+```
+
+{% callout type="info" title="URL-Based Instructions" %}
+URL-based instruction sources are fetched at session start with a 5-second timeout. If the URL is unreachable, the instruction source is silently skipped.
+{% /callout %}
+
+## Legacy `.kilocoderules` Support
+
+If your project contains `.kilocoderules` files from the Classic extension, these are still loaded via auto-migration. However, migrating to `AGENTS.md` is recommended for new projects.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+The CLI provides multiple layers of instruction configuration — from per-agent prompts in agent definition files to auto-discovered files in your project and global config.
+
+## Per-Agent Prompts
+
+Each agent can have its own custom prompt defined in its `.md` file (the markdown body) or via the `agent.<name>.prompt` key in `kilo.json`:
+
+```jsonc
+// kilo.json
+{
+  "agent": {
+    "code": {
+      "prompt": "You are a Python specialist. Follow PEP8 strictly.",
+    },
+  },
+}
+```
+
+Or as the markdown body in `.kilo/agents/code.md`:
+
+```markdown
+---
+description: Python specialist
+---
+
+You are a Python specialist. Follow PEP8 strictly.
+```
+
+These prompts are injected into the agent's system prompt and apply across all sessions using that agent.
+
+## Instruction Files
+
+Kilo automatically discovers instruction files at your project root and in parent directories (via `findUp`). The following filenames are recognized:
+
+- **`AGENTS.md`** — The primary instruction file for Kilo
+- **`CLAUDE.md`** — Also supported for compatibility
+- **`CONTEXT.md`** — Additional project context
+
+Place any of these files at your project root to provide project-wide instructions to the agent.
+
+### Global Instructions
+
+For instructions that apply across all your projects, place an `AGENTS.md` file in your global config directory:
+
+- **Kilo:** `~/.config/kilo/AGENTS.md`
+- **Claude-compatible:** `~/.claude/CLAUDE.md`
+
+Global instructions are loaded before project-level instructions and apply to every session.
+
+### Per-Directory Instructions
+
+You can place `AGENTS.md` files in any subdirectory of your project. These are loaded dynamically — when the agent's Read tool accesses a file in that directory, the corresponding `AGENTS.md` is discovered and its contents are injected into the conversation as `<system-reminder>` tags.
+
+This is useful for providing context-specific guidance for different parts of a monorepo or project.
+
+## Additional Instruction Sources
+
+The `config.instructions` setting accepts an array of paths, globs, or URLs pointing to additional instruction files. Configure these in your `kilo.json`:
+
+```jsonc
+// kilo.json
+{
+  "instructions": [
+    "./docs/coding-standards.md",
+    "./teams/frontend-rules.md",
+    "https://example.com/team-instructions.md",
+  ],
+}
 ```
 
 {% callout type="info" title="URL-Based Instructions" %}

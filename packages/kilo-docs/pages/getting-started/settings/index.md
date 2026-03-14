@@ -5,7 +5,7 @@ description: "Configure Kilo Code settings and preferences"
 
 # Settings
 
-Kilo Code offers two platforms, each with its own approach to configuration. The **Classic Extension** uses the VS Code settings UI with export/import/reset workflows. The **New CLI & Extension** uses portable JSONC config files and a Settings webview.
+Kilo Code offers multiple platforms, each with its own approach to configuration. The **Classic Extension** uses the VS Code settings UI with export/import/reset workflows. The **New Extension** provides a Settings webview that reads and writes to JSONC config files. The **CLI** uses portable JSONC config files directly.
 
 ## Managing Settings
 
@@ -65,22 +65,18 @@ Clicking the **Reset** button completely clears all Kilo Code configuration data
 Use this option only if you are certain you want to remove all Kilo Code data or if instructed during troubleshooting. Consider exporting your settings first if you might want to restore them later.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
 
-In the new platform, settings are managed via **JSONC config files** rather than the VS Code settings UI. Config files are plain-text and portable -- you can copy them between machines or check them into version control.
+The VS Code extension provides a **Settings webview UI** accessible from the extension sidebar by clicking the gear icon ({% codicon name="gear" /%}). The UI is organized into tabs including Providers, Auto-Approve, Models, and more.
+
+This UI reads and writes to the same underlying JSONC config files used by the CLI, so changes made in either place are reflected in both.
 
 ### Config File Locations
 
 There are two primary config files:
 
-- **Global config:** `~/.config/kilo/kilo.jsonc` -- applies to all projects.
-- **Project config:** `kilo.jsonc` in the root of your project -- overrides global settings for that project.
-
-Both files use the [JSONC](https://code.visualstudio.com/docs/languages/json#_json-with-comments) format (JSON with comments).
-
-### Settings Webview UI
-
-The VS Code extension also provides a **Settings webview UI** with 14 tabs, accessible from the extension sidebar. This UI reads and writes to the same underlying JSONC config files.
+- **Global config:** `~/.config/kilo/kilo.json` -- applies to all projects.
+- **Project config:** `kilo.json` in the root of your project -- overrides global settings for that project.
 
 ### Config File Precedence
 
@@ -88,9 +84,42 @@ Settings are resolved through an 8-level precedence system (lowest to highest pr
 
 1. **Legacy Kilocode** -- migrated settings from the Classic extension
 2. **Remote well-known** -- remotely fetched defaults
-3. **Global** -- `~/.config/kilo/kilo.jsonc`
+3. **Global** -- `~/.config/kilo/kilo.json`
 4. **Custom** -- additional custom config paths
-5. **Project** -- `kilo.jsonc` in the project root
+5. **Project** -- `kilo.json` in the project root
+6. **`.kilo` directory** -- config from a `.kilo/` directory in the project
+7. **Inline environment** -- environment variable overrides
+8. **Managed / Enterprise** -- enterprise-managed configuration (highest priority)
+
+Higher-priority levels override lower ones. This allows organizations to enforce settings at the enterprise level while still letting individual developers customize their local environment.
+
+### Export and Import
+
+There is no traditional export/import of settings -- the JSONC config files themselves are portable. Copy `~/.config/kilo/kilo.json` or `kilo.json` to another machine and you're done.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+In the CLI, settings are managed via **JSONC config files** directly. Config files are plain-text and portable -- you can copy them between machines or check them into version control.
+
+### Config File Locations
+
+There are two primary config files:
+
+- **Global config:** `~/.config/kilo/kilo.json` -- applies to all projects.
+- **Project config:** `kilo.json` in the root of your project -- overrides global settings for that project.
+
+Both files use the [JSONC](https://code.visualstudio.com/docs/languages/json#_json-with-comments) format (JSON with comments).
+
+### Config File Precedence
+
+Settings are resolved through an 8-level precedence system (lowest to highest priority):
+
+1. **Legacy Kilocode** -- migrated settings from the Classic extension
+2. **Remote well-known** -- remotely fetched defaults
+3. **Global** -- `~/.config/kilo/kilo.json`
+4. **Custom** -- additional custom config paths
+5. **Project** -- `kilo.json` in the project root
 6. **`.kilo` directory** -- config from a `.kilo/` directory in the project
 7. **Inline environment** -- environment variable overrides
 8. **Managed / Enterprise** -- enterprise-managed configuration (highest priority)
@@ -116,11 +145,11 @@ This is useful for keeping secrets out of config files. For example:
 
 ### Schema Auto-Injection
 
-When you create or open a `kilo.jsonc` file, the CLI automatically injects a `$schema` property pointing to the config JSON schema. This gives you **autocompletion and validation** in any editor that supports JSON Schema (VS Code, JetBrains, etc.).
+When you create or open a `kilo.json` file, the CLI automatically injects a `$schema` property pointing to the config JSON schema. This gives you **autocompletion and validation** in any editor that supports JSON Schema (VS Code, JetBrains, etc.).
 
 ### Export and Import
 
-There is no traditional export/import of settings -- the JSONC config files themselves are portable. Copy `~/.config/kilo/kilo.jsonc` or `kilo.jsonc` to another machine and you're done.
+There is no traditional export/import of settings -- the JSONC config files themselves are portable. Copy `~/.config/kilo/kilo.json` or `kilo.json` to another machine and you're done.
 
 For **session** export and import, use the CLI commands:
 
@@ -184,9 +213,14 @@ This setting controls the number of lines read from a file in one batch. To mana
 You can find this setting in the Kilo Code settings under 'Advanced Settings'.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
 
-The new CLI & Extension does not currently expose the same experimental feature toggles as the Classic Extension. Configuration of model behavior, file editing strategies, and other advanced options is handled directly in the JSONC config files. Refer to the auto-generated `$schema` in your `kilo.jsonc` for the full list of available options.
+The new extension does not currently expose the same experimental feature toggles as the Classic Extension. Advanced options are configured via the JSONC config files that the Settings webview reads and writes. Refer to the auto-generated `$schema` in your `kilo.json` for the full list of available options.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+The CLI does not currently expose the same experimental feature toggles as the Classic Extension. Configuration of model behavior, file editing strategies, and other advanced options is handled directly in the JSONC config files. Refer to the auto-generated `$schema` in your `kilo.json` for the full list of available options.
 
 {% /tab %}
 {% /tabs %}

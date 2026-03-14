@@ -26,7 +26,7 @@ By default, Kilo Code uses a built-in Puppeteer browser that:
 All of this happens directly within VS Code, with no setup required.
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 Kilo Code uses [Playwright](https://playwright.dev/) via MCP (`@playwright/mcp@latest`) for browser automation. The Playwright MCP server is registered dynamically as `kilo-playwright`.
 
@@ -36,7 +36,7 @@ Kilo Code uses [Playwright](https://playwright.dev/) via MCP (`@playwright/mcp@l
 - Configure `browserAutomation.headless` and `browserAutomation.useSystemChrome` settings
 - Playwright auto-downloads Chromium on first use
 
-**In CLI-only mode**, you need to manually add the MCP server to your `kilo.jsonc` configuration:
+**In CLI-only mode**, you need to manually add the MCP server to your `kilo.json` configuration:
 
 ```json
 {
@@ -95,7 +95,7 @@ Key characteristics:
 | `close`       | Closes the browser             | Ending a browser session              |
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 The Playwright MCP server provides a set of browser tools for interacting with web pages. These tools return screenshots and accessibility snapshots after each action.
 
@@ -228,7 +228,7 @@ google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug --n
 ```
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 ### VS Code Extension Settings
 
@@ -240,7 +240,7 @@ In the VS Code extension, browser automation settings are available under **Sett
 
 ### CLI Configuration
 
-In CLI-only mode, browser automation requires manual MCP configuration in your `kilo.jsonc` file:
+In CLI-only mode, browser automation requires manual MCP configuration in your `kilo.json` file:
 
 ```json
 {

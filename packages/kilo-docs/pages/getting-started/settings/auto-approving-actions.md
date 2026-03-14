@@ -9,7 +9,7 @@ description: "Configure automatic approval settings for Kilo Code operations"
 **Security Warning:** Auto-approve settings bypass confirmation prompts, giving Kilo Code direct access to your system. This can result in data loss, file corruption, or worse. Command line access is particularly dangerous, as it can potentially execute harmful operations that could damage your system or compromise security. Only enable auto-approval for actions you fully trust.
 {% /callout %}
 
-Auto-approve settings speed up your workflow by eliminating repetitive confirmation prompts, but they significantly increase security risks. The Classic extension and the new CLI & Extension handle permissions differently — choose the tab that matches your setup.
+Auto-approve settings speed up your workflow by eliminating repetitive confirmation prompts, but they significantly increase security risks. The Classic extension, new extension, and CLI each handle permissions differently — choose the tab that matches your setup.
 
 {% tabs %}
 {% tab label="Classic Extension" %}
@@ -348,16 +348,13 @@ This is the fastest way to work with Kilo Code, but also the riskiest. Use it on
 {% /callout %}
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension" %}
 
 ## Overview
 
-The new CLI and extension use a granular, per-tool permission system configured in `kilo.jsonc`. Instead of broad categories like "read" or "write," each tool has its own permission level with glob-pattern rules for fine-grained control.
+The new extension uses a granular, per-tool permission system. You can configure permissions through the **Settings → Auto Approve** tab, which provides a UI with per-tool **Allow / Ask / Deny** dropdowns.
 
-You can configure permissions through:
-
-- The **Settings → Auto Approve** tab in the VS Code extension UI
-- The `kilo.jsonc` configuration file directly (for CLI or manual editing)
+The UI reads and writes to the same `kilo.json` config files used by the CLI, so changes made in either place are reflected in both.
 
 ## Permission Levels
 
@@ -371,7 +368,73 @@ Each tool permission can be set to one of three values:
 
 ## Available Tool Permissions
 
-Permissions are configured under the `permission` key in `kilo.jsonc`. The following tool-specific permission levels are available:
+The Auto Approve tab lists the following tool-specific permissions:
+
+| Permission           | Controls                                               |
+| -------------------- | ------------------------------------------------------ |
+| `read`               | Reading file contents                                  |
+| `edit`               | Editing existing files                                 |
+| `glob`               | File pattern matching / searching by name              |
+| `grep`               | Searching file contents by regex                       |
+| `list`               | Listing directory contents                             |
+| `bash`               | Executing shell commands                               |
+| `task`               | Launching sub-agents                                   |
+| `skill`              | Loading specialized skills                             |
+| `lsp`                | Language server protocol operations                    |
+| `todoread`           | Reading the todo list                                  |
+| `todowrite`          | Updating the todo list                                 |
+| `webfetch`           | Fetching content from URLs                             |
+| `websearch`          | Performing web searches                                |
+| `codesearch`         | Searching code examples and documentation              |
+| `external_directory` | Accessing files outside the project directory          |
+| `doom_loop`          | Allowing the agent to continue after repeated failures |
+
+## Set All (Bulk Control)
+
+Use the **Set All** control to quickly set all tools to the same permission level (`allow`, `ask`, or `deny`). This is useful for:
+
+- Quickly locking down all permissions before working on sensitive code
+- Opening up all permissions for rapid prototyping in a safe environment
+- Resetting to a known baseline
+
+## Runtime Permission Requests
+
+When a tool is set to `"ask"`, Kilo pauses and displays a permission request popup. You have three options:
+
+| Option     | Behavior                                                 |
+| ---------- | -------------------------------------------------------- |
+| **Once**   | Allow this specific invocation only                      |
+| **Always** | Allow this tool (or pattern) for the rest of the session |
+| **Reject** | Block this specific invocation                           |
+
+## Defaults
+
+Most tools default to `"*": "allow"` for a smooth out-of-the-box experience. Notable exceptions that prompt by default:
+
+- **`.env` files** — reading or editing `.env` files prompts for approval
+- **`external_directory`** — accessing files outside the project prompts for approval
+- **`doom_loop`** — prompts when the agent enters a repeated failure cycle
+
+{% /tab %}
+{% tab label="CLI" %}
+
+## Overview
+
+The CLI uses a granular, per-tool permission system configured in `kilo.json`. Instead of broad categories like "read" or "write," each tool has its own permission level with glob-pattern rules for fine-grained control.
+
+## Permission Levels
+
+Each tool permission can be set to one of three values:
+
+| Value     | Behavior                                                  |
+| --------- | --------------------------------------------------------- |
+| `"allow"` | The tool runs automatically without prompting             |
+| `"ask"`   | Kilo pauses and asks for approval before running the tool |
+| `"deny"`  | The tool is blocked entirely                              |
+
+## Available Tool Permissions
+
+Permissions are configured under the `permission` key in `kilo.json`. The following tool-specific permission levels are available:
 
 | Permission           | Controls                                               |
 | -------------------- | ------------------------------------------------------ |
@@ -469,14 +532,6 @@ Different agents can have different permission levels. Override the default perm
 ```
 
 In this example, the `code` agent can run `git` commands automatically and asks for other shell commands, while the `plan` agent cannot run shell commands at all.
-
-## Set All (Bulk Control)
-
-Use the **Set All** control in the VS Code extension UI to quickly set all tools to the same permission level (`allow`, `ask`, or `deny`). This is useful for:
-
-- Quickly locking down all permissions before working on sensitive code
-- Opening up all permissions for rapid prototyping in a safe environment
-- Resetting to a known baseline
 
 ## Runtime Permission Requests
 

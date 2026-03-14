@@ -38,12 +38,12 @@ Access checkpoint settings in Kilo Code settings under the "Checkpoints" section
    {% image src="/docs/img/checkpoints/checkpoints.png" alt="Checkpoint settings in Kilo Code configuration" width="500" /%}
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 Checkpoints are controlled by the `config.snapshot` boolean:
 
 - **Settings UI**: Open Settings â Checkpoints tab and toggle the snapshot setting
-- **Config file**: Set `"snapshot": true` or `"snapshot": false` in your `kilo.jsonc` configuration file
+- **Config file**: Set `"snapshot": true` or `"snapshot": false` in your `kilo.json` configuration file
 
 ```json
 {
@@ -121,7 +121,7 @@ To restore a project to a previous checkpoint state:
      {% image src="/docs/img/checkpoints/checkpoints-9.png" alt="Confirmation dialog for restoring checkpoint with files & task" width="300" /%}
 
 {% /tab %}
-{% tab label="New CLI & Extension" %}
+{% tab label="New Extension & CLI" %}
 
 Checkpoints are captured automatically at each step of a task. The system calls `Snapshot.track()` at `start-step` and `finish-step` events, recording Git tree objects via `git write-tree`.
 

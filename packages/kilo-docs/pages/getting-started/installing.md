@@ -5,37 +5,27 @@ description: "How to install Kilo Code on your system"
 
 # Installation
 
-Get started with Kilo Code by installing it on your preferred platform. Choose your development environment below:
+Get started with Kilo Code by installing it on your preferred platform. Choose your development environment below.
+
+{% callout type="info" title="Two Extension Versions" %}
+Kilo Code offers two VS Code extension versions: the **stable release** (Classic, v5.x) and a **pre-release** (New, v7.x+) built on the Kilo CLI. The pre-release uses a new architecture with JSONC config files and a granular permission system. See [Introduction](/docs/getting-started) for details.
+{% /callout %}
 
 ## Choose Your Platform
 
 {% tabs %}
-{% tab label="VS Code" %}
+{% tab label="VS Code (Classic)" %}
 
-## VS Code Extension
+## VS Code Classic Extension (v5.x)
 
 {% partial file="install-vscode.md" /%}
 
 {% /tab %}
-{% tab label="VS Code (Preview)" %}
+{% tab label="VS Code (New)" %}
 
-## VS Code Preview Extension
+## VS Code Pre-Release Extension (v7.x+)
 
-{% callout type="info" %}
-We're rebuilding Kilo Code from the ground up on the new [Kilo CLI](https://github.com/Kilo-Org/kilocode). The pre-release extension is available for users who want to try the latest architecture and provide feedback, and don't mind some missing features and rough edges.
-{% /callout %}
-
-The pre-release extension is a complete rebuild featuring:
-
-- A new Solid.js-based UI
-- Deep integration with the Kilo CLI backend
-- Improved session management and model switching
-
-### Current Status
-
-This is an early pre-release. Core features like chat, markdown rendering, authentication, and model/mode switching are working. Some features from the stable extension are still being implemented.
-
-For the full feature status, see the [feature parity tracking document](https://github.com/Kilo-Org/kilocode/blob/main/packages/kilo-vscode/docs/opencode-migration-plan.md).
+The pre-release extension is built on the [Kilo CLI](https://github.com/Kilo-Org/kilocode) core and features a new Solid.js-based UI, JSONC config files, and a granular permission system.
 
 ### Installing the Pre-Release
 
@@ -44,7 +34,7 @@ For the full feature status, see the [feature parity tracking document](https://
 3. Search for "Kilo Code"
 4. Click the dropdown arrow next to **Install** and select **Install Pre-Release Version**
 
-### Switching Back to Stable
+### Switching Back to Classic
 
 If you need to return to the stable version:
 
@@ -52,23 +42,27 @@ If you need to return to the stable version:
 2. Find Kilo Code
 3. Click the dropdown and select **Switch to Release Version**
 
+### Migrating from Classic
+
+When you first open the pre-release extension, a **migration wizard** detects settings from the Classic extension (providers, MCP servers, custom modes, default model) and offers to migrate them. You can also trigger this manually from **Settings → About**.
+
 ### Feedback and Issues
 
 Report issues or provide feedback in the [Kilo-Org/kilocode repository](https://github.com/Kilo-Org/kilocode/issues).
 
 {% /tab %}
-{% tab label="JetBrains" %}
-
-## JetBrains IDEs
-
-{% partial file="install-jetbrains.md" /%}
-
-{% /tab %}
 {% tab label="CLI" %}
 
-## Command Line Interface
+## Command Line Interface (v7.x+)
 
 {% partial file="install-cli.md" /%}
+
+{% /tab %}
+{% tab label="JetBrains" %}
+
+## JetBrains IDEs (Classic)
+
+{% partial file="install-jetbrains.md" /%}
 
 {% /tab %}
 {% tab label="Slack" %}

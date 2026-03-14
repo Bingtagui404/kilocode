@@ -9,6 +9,7 @@ export const CodeWithAiNav: NavSection[] = [
       {
         href: "/code-with-ai/platforms/jetbrains",
         children: "JetBrains Extension",
+        platform: "classic",
       },
       { href: "/code-with-ai/platforms/cli", children: "CLI", platform: "next" },
       { href: "/code-with-ai/platforms/cloud-agent", children: "Cloud Agent" },
