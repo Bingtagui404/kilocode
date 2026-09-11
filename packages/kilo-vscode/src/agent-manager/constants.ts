@@ -13,6 +13,9 @@ export const MAX_MULTI_VERSIONS = 4
 /** Telemetry source identifier for all Agent Manager events. */
 export const PLATFORM = "agent-manager" as const
 
+/** Keep baseline snapshots without interrupting concurrently started agents. */
+export const SNAPSHOT_INITIALIZATION = "wait" as const
+
 /** Kilo config directory name (project-level and inside worktrees). */
 export const KILO_DIR = ".kilo"
 
@@ -30,6 +33,12 @@ const AGENT_MANAGER_ITEMS = [
   "setup-script.bat",
 ]
 
+/** Result of the migration so callers can react (e.g. refresh VS Code git). */
+export interface MigrationResult {
+  /** Number of git worktree refs that were rewritten from .kilocode → .kilo. */
+  refsFixed: number
+}
+
 /**
  * Migrate Agent Manager data from .kilocode/ to .kilo/.
  *
@@ -43,7 +52,7 @@ const AGENT_MANAGER_ITEMS = [
  *
  * Idempotent: safe to call on every startup.
  */
-export async function migrateAgentManagerData(root: string, log: (msg: string) => void): Promise<void> {
+export async function migrateAgentManagerData(root: string, log: (msg: string) => void): Promise<MigrationResult> {
   const legacy = path.join(root, LEGACY_DIR)
   const target = path.join(root, KILO_DIR)
 
@@ -77,9 +86,12 @@ export async function migrateAgentManagerData(root: string, log: (msg: string) =
     }
   }
 
+  let refsFixed = 0
   if (await isDirectory(path.join(target, "worktrees"))) {
-    await fixGitWorktreeRefs(root, log)
+    refsFixed = await fixGitWorktreeRefs(root, log)
   }
+
+  return { refsFixed }
 }
 
 async function exists(filepath: string): Promise<boolean> {
@@ -106,20 +118,16 @@ async function isDirectory(filepath: string): Promise<boolean> {
  * When root/.git is a file (worktree), follows the gitdir pointer
  * up two levels to reach the shared git directory.
  */
-async function resolveGitDir(root: string): Promise<string | undefined> {
+export async function resolveGitDir(root: string): Promise<string> {
   const gitPath = path.join(root, ".git")
-  try {
-    const stat = await fs.promises.stat(gitPath)
-    if (stat.isDirectory()) return gitPath
+  const stat = await fs.promises.stat(gitPath)
+  if (stat.isDirectory()) return gitPath
 
-    const content = await fs.promises.readFile(gitPath, "utf-8")
-    const match = content.match(/^gitdir:\s*(.+)$/m)
-    if (!match) return undefined
-    // gitdir points to e.g. /repo/.git/worktrees/foo — go up two levels to /repo/.git
-    return path.resolve(path.dirname(gitPath), match[1].trim(), "..", "..")
-  } catch {
-    return undefined
-  }
+  const content = await fs.promises.readFile(gitPath, "utf-8")
+  const match = content.match(/^gitdir:\s*(.+)$/m)
+  if (!match) throw new Error("Invalid .git file format")
+  // gitdir points to e.g. /repo/.git/worktrees/foo — go up two levels to /repo/.git
+  return path.resolve(path.dirname(gitPath), match[1].trim(), "..", "..")
 }
 
 /**
@@ -128,21 +136,29 @@ async function resolveGitDir(root: string): Promise<string | undefined> {
  * Git stores absolute paths in .git/worktrees/{name}/gitdir. When the
  * worktree directory moves, those paths become stale. This rewrites any
  * gitdir files that reference the old .kilocode path.
+ *
+ * Returns the number of refs that were successfully fixed so callers can
+ * tell whether a VS Code git refresh is warranted.
  */
-async function fixGitWorktreeRefs(root: string, log: (msg: string) => void): Promise<void> {
-  const gitDir = await resolveGitDir(root)
-  if (!gitDir) return
+async function fixGitWorktreeRefs(root: string, log: (msg: string) => void): Promise<number> {
+  const gitDir = await resolveGitDir(root).catch(() => undefined)
+  if (!gitDir) {
+    log("fixGitWorktreeRefs: could not resolve git directory")
+    return 0
+  }
 
   const gitWorktreesDir = path.join(gitDir, "worktrees")
   try {
     const stat = await fs.promises.stat(gitWorktreesDir)
-    if (!stat.isDirectory()) return
-  } catch {
-    return
+    if (!stat.isDirectory()) return 0
+  } catch (err) {
+    log(`fixGitWorktreeRefs: ${gitWorktreesDir} not accessible: ${err}`)
+    return 0
   }
 
   const oldSegment = path.join(root, LEGACY_DIR) + path.sep
   const newSegment = path.join(root, KILO_DIR) + path.sep
+  let fixed = 0
 
   try {
     const entries = await fs.promises.readdir(gitWorktreesDir, { withFileTypes: true })
@@ -151,15 +167,26 @@ async function fixGitWorktreeRefs(root: string, log: (msg: string) => void): Pro
       const gitdirFile = path.join(gitWorktreesDir, entry.name, "gitdir")
       try {
         const content = await fs.promises.readFile(gitdirFile, "utf-8")
-        if (content.includes(oldSegment)) {
-          await fs.promises.writeFile(gitdirFile, content.replaceAll(oldSegment, newSegment))
+        if (!content.includes(oldSegment)) continue
+
+        const updated = content.replaceAll(oldSegment, newSegment)
+        await fs.promises.writeFile(gitdirFile, updated)
+
+        // Verify the write persisted — catch silent FS failures (e.g. read-only mount)
+        const verify = await fs.promises.readFile(gitdirFile, "utf-8")
+        if (verify === updated) {
+          fixed++
           log(`Fixed git worktree ref: ${entry.name}`)
+        } else {
+          log(`Warning: git worktree ref write did not persist for ${entry.name}`)
         }
-      } catch {
-        // gitdir file missing or unreadable — skip
+      } catch (err) {
+        log(`Warning: could not fix git worktree ref ${entry.name}: ${err}`)
       }
     }
-  } catch {
-    // .git/worktrees unreadable — skip
+  } catch (err) {
+    log(`Warning: could not read ${gitWorktreesDir}: ${err}`)
   }
+
+  return fixed
 }

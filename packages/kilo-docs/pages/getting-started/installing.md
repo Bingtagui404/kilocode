@@ -14,76 +14,16 @@ Get started with Kilo Code by installing it on your preferred platform. Choose y
 
 ## VS Code Extension
 
-{% partial file="install-vscode.md" /%}
-
-{% /tab %}
-{% tab label="VS Code (Preview)" %}
-
-## VS Code Preview Extension
-
-{% callout type="info" %}
-We're rebuilding Kilo Code from the ground up on the new [Kilo CLI](https://github.com/Kilo-Org/kilocode). The pre-release extension is available for users who want to try the latest architecture and provide feedback, and don't mind some missing features and rough edges.
-{% /callout %}
-
-The pre-release extension is a complete rebuild featuring:
-
-- A new Solid.js-based UI
-- Deep integration with the Kilo CLI backend
-- Improved session management and model switching
-
-### Current Status
-
-This is an early pre-release. Core features like chat, markdown rendering, authentication, and model/mode switching are working. Some features from the stable extension are still being implemented.
-
-For the full feature status, see the [feature parity tracking document](https://github.com/Kilo-Org/kilocode/blob/main/packages/kilo-vscode/docs/opencode-migration-plan.md).
-
-### Installing the Pre-Release
+The current Kilo Code extension is built on the [Kilo CLI](https://github.com/Kilo-Org/kilocode) and is distributed as the **pre-release version** on the VS Code Marketplace.
 
 1. Open VS Code
 2. Go to Extensions (`Ctrl+Shift+X` / `Cmd+Shift+X`)
 3. Search for "Kilo Code"
 4. Click the dropdown arrow next to **Install** and select **Install Pre-Release Version**
 
-### Switching Back to Stable
-
-If you need to return to the stable version:
-
-1. Open Extensions in VS Code
-2. Find Kilo Code
-3. Click the dropdown and select **Switch to Release Version**
-
-### Feedback and Issues
-
-Report issues or provide feedback in the [Kilo-Org/kilocode repository](https://github.com/Kilo-Org/kilocode/issues).
-
-{% /tab %}
-{% tab label="JetBrains" %}
-
-## JetBrains IDEs
-
-{% partial file="install-jetbrains.md" /%}
-
-{% /tab %}
-{% tab label="CLI" %}
-
-## Command Line Interface
-
-{% partial file="install-cli.md" /%}
-
-{% /tab %}
-{% tab label="Slack" %}
-
-## Slack Integration
-
-{% partial file="install-slack.md" /%}
-
-{% /tab %}
-{% tab label="Other IDEs" %}
-
-{% partial file="install-other-ides.md" /%}
-
-{% /tab %}
-{% /tabs %}
+{% callout type="info" %}
+The "pre-release" label is a VS Code Marketplace distribution channel — the extension is stable and recommended for all users.
+{% /callout %}
 
 ## Manual Installations
 
@@ -119,6 +59,15 @@ If you prefer to download and install the VSIX file directly:
    - Select "Install from VSIX..."
    - Browse to and select your downloaded `.vsix` file
 
+If you need to temporarily go back to an earlier version, use the same flow with a `.vsix` asset from an older release:
+
+1. Open the [Kilo Code GitHub Releases page](https://github.com/Kilo-Org/kilocode/releases)
+2. Pick the release you want to stay on and download its VS Code `.vsix` asset
+3. In VS Code, open Extensions, click the "..." menu, and select "Install from VSIX..."
+4. Choose the downloaded `.vsix` file to install that version
+
+If you plan to remain on that version for a while, you may also want to temporarily disable extension auto-update in VS Code so it does not immediately update again.
+
 {% image src="/docs/img/installing-vsix.png" alt="Installing Kilo Code using VS Code's Install from VSIX dialog" width="600px" caption="Installing Kilo Code using VS Code's \"Install from VSIX\" dialog" /%}
 
 ## Troubleshooting
@@ -144,13 +93,41 @@ If you prefer to download and install the VSIX file directly:
   3. Add: `C:\Windows\System32\WindowsPowerShell\v1.0\`
   4. Click **OK** and restart VS Code
 
+{% /tab %}
+{% tab label="CLI" %}
+
+## Command Line Interface
+
+{% partial file="install-cli.md" /%}
+
+{% /tab %}
+{% tab label="JetBrains" %}
+
+## JetBrains IDEs
+
+{% partial file="install-jetbrains.md" /%}
+
+{% /tab %}
+{% tab label="Slack" %}
+
+## Slack Integration
+
+{% partial file="install-slack.md" /%}
+
+{% /tab %}
+{% tab label="Other IDEs" %}
+
+{% partial file="install-other-ides.md" /%}
+
+{% /tab %}
+{% /tabs %}
+
 ## Next Steps
 
-After installation, check out these resources to get started:
+After installation:
 
-- [Quickstart Guide](/docs/getting-started/quickstart) - Get up and running in minutes
-- [Setting Up Authentication](/docs/getting-started/setup-authentication) - Configure your AI provider
-- [Your First Task](/docs/code-with-ai/agents/chat-interface) - Learn the basics of working with Kilo Code
+1. **[Set up authentication](/docs/getting-started/setup-authentication)** to configure your AI provider
+2. **[Run your first task](/docs/getting-started/quickstart)** — Learn how to chat with Kilo to complete tasks
 
 ## Getting Support
 

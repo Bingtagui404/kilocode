@@ -23,9 +23,17 @@ Before using Cloud Agents:
 
 ## Cost
 
-- **Compute is free during limited beta**
-  - Please provide any feedback in our Cloud Agents beta Discord channel: [Kilo Discord](https://kilo.ai/discord)
-- **Kilo Code credits are still used** when the agent performs work (model usage, operations, etc.).
+Cloud Agent compute is billed per second while the container is awake. Compute and model inference draw from the same Kilo credit balance, but they are charged separately.
+
+| Cloud Agent size | Hourly rate |
+|---|---|
+| Docker | $0.60 |
+| Small | $0.60 |
+| Standard | $1.20 |
+
+Usage is measured in whole seconds, with no rounding up to a longer billing interval and no minimum usage charge. Your balance must contain at least $5 to launch a container, but this is not an extra charge or minimum spend. BYOK users still pay for cloud compute because their provider keys cover inference only.
+
+See [Kilo Code pricing](https://kilo.ai/pricing) for current rates and pricing for other cloud products.
 
 ## How to Use
 
@@ -35,6 +43,16 @@ Before using Cloud Agents:
 4. **Start chatting with Kilo Code.**
 
 Your work is always pushed to GitHub, ensuring nothing is lost.
+
+## Starting Tasks from the CLI
+
+Use the `kilo cloud` command to run Cloud Agent tasks without opening the browser:
+
+```bash
+kilo cloud start --prompt "Fix the flaky login test" --repo Kilo-Org/kilocode
+```
+
+`kilo cloud` can start tasks, send follow-up prompts, and check task status and results. Repository, branch, model, mode, and organization are inferred from your local checkout and CLI defaults unless you pass the matching flags. Add `--stream` to `kilo cloud start` to print task events as JSONL until the task completes. See the [CLI reference](/docs/code-with-ai/platforms/cli-reference#kilo-cloud) for all commands and options.
 
 ## How Cloud Agents Work
 
@@ -85,21 +103,50 @@ You can customize each Cloud Agent session by also defining env vars and startup
   - Bootstrapping tooling
   - Running setup scripts
 
-### Setup Commands vs `.kilocode/setup-script`
+### Setup Commands vs `.kilo/setup-script`
 
 - Cloud Agent executes **Setup Commands** configured in the Cloud UI/profile.
-- Cloud Agent does **not** automatically discover or run `.kilocode/setup-script`.
-- If you want to use `.kilocode/setup-script` in Cloud Agent, call it explicitly from Setup Commands, for example: `bash .kilocode/setup-script`.
+- Cloud Agent does **not** automatically discover or run `.kilo/setup-script`.
+- If you want to use `.kilo/setup-script` in Cloud Agent, call it explicitly from Setup Commands, for example: `bash .kilo/setup-script`.
 - If both are present, execution order is:
   1. Setup Commands (in the order you define them)
-  2. Anything those commands invoke (such as `.kilocode/setup-script`)
+  2. Anything those commands invoke (such as `.kilo/setup-script`)
 
 ## Skills
 
-Cloud Agents support project-level [skills](/docs/code-with-ai/platforms/cli#skills) stored in your repository. When your repo is cloned, any skills in `.kilocode/skills/` are automatically available.
+Cloud Agents support project-level [skills](/docs/code-with-ai/platforms/cli#skills) stored in your repository. When your repo is cloned, any skills in `.kilo/skills/` (or the legacy `.kilocode/skills/`) are automatically available. Skill folders are uploaded as `.zip` archives, with up to 40 companion files per skill.
 
 {% callout type="note" %}
-Global skills (`~/.kilocode/skills/`) are not available in Cloud Agents since there is no persistent user home directory.
+Global skills (`~/.kilo/skills/`) are not available in Cloud Agents since there is no persistent user home directory.
+{% /callout %}
+
+## Remote Connections
+
+Remote Connections let you access and control local CLI sessions from the Cloud Agents web interface. Your computer handles the compute; the cloud gives you a window into it from any device.
+
+### How It Works
+
+When remote mode is enabled in the CLI, your active local sessions appear in the Cloud Agents dashboard alongside cloud sessions. The connection is two-way:
+
+- **Messages and responses** sync in real-time
+- **Agent questions** appear in both places — answer wherever you are
+- **Permission requests** route to your active connection
+- **Full editing capabilities** work remotely
+- **Session renames** sync in both directions between the CLI and the web or mobile app
+- **File attachments** sync with the mobile app — send files from your phone to the CLI, and receive files the agent delivers back. See [Attachments in remote sessions](/docs/code-with-ai/platforms/mobile#attachments-in-remote-sessions)
+
+### Enabling Remote Mode
+
+Remote mode must be enabled from the CLI. See [CLI Remote Connections](/docs/code-with-ai/platforms/cli#remote-connections) for setup instructions.
+
+### Requirements
+
+- Same Kilo account on both CLI and Cloud Agent
+- Active internet connection on the local machine
+- CLI must remain running
+
+{% callout type="warning" title="Security Warning" %}
+Anyone with access to your Kilo account can send messages to your computer when remote mode is enabled.
 {% /callout %}
 
 ## Perfect For
@@ -112,30 +159,46 @@ Cloud Agents are great for:
 - **Automated refactors or tech debt cleanup** driven by Kilo Code
 - **Offloading CI-like tasks**, experiments, or batch updates
 
-## Webhook Triggers
+## Triggers
 
-Webhook triggers allow you to initiate cloud agent sessions via HTTP requests. This enables integration with external services and automation workflows.
+Triggers allow you to initiate cloud agent sessions automatically, either via HTTP requests (webhooks) or on a recurring schedule. This enables integration with external services and time-based automation workflows.
 
 {% callout type="note" %}
-Webhook triggers are currently in beta and subject to change.
+Triggers are currently in beta and subject to change.
 {% /callout %}
 
-### Accessing Webhooks
+Use Cloud Agent triggers when an HTTP event or schedule should start a Cloud Agent
+session against a repository.
 
-Webhook triggers are accessible from the main sidebar with an entry named **Webhook** and link to [https://app.kilo.ai/cloud/webhooks](https://app.kilo.ai/cloud/webhooks) for personal accounts. Organization-level webhook configurations are available through your organization's sidebar.
+### Accessing Triggers
+
+Triggers are accessible from the main sidebar under **Webhooks / Triggers** and link to [https://app.kilo.ai/cloud/triggers](https://app.kilo.ai/cloud/triggers) for personal accounts. Organization-level trigger configurations are available through your organization's sidebar.
+
+### Activation Modes
+
+When creating a trigger, you choose an **activation mode** that cannot be changed after creation:
+
+- **Webhook**: Fires when an external service sends an HTTP request to the trigger's URL
+- **Scheduled**: Fires on a recurring schedule defined by a cron expression
 
 ### Configuration
 
-Webhook triggers utilize [agent environment profiles](#agent-environment-profiles) to configure the execution environment for triggered sessions. The agent resolves the profile at runtime, so profile updates apply automatically to future executions. Profiles referenced by triggers cannot be deleted until those triggers are updated or removed.
+Triggers utilize [agent environment profiles](#agent-environment-profiles) to configure the execution environment for triggered sessions. The agent resolves the profile at runtime, so profile updates apply automatically to future executions. Profiles referenced by triggers cannot be deleted until those triggers are updated or removed.
 
-Webhook triggers do not support manual env var or setup command overrides at this time.
+Triggers do not support manual env var or setup command overrides at this time.
+
+### Scheduled Triggers
+
+Scheduled triggers fire on a recurring schedule using cron expressions. You can configure them with a simple frequency picker (every 10 minutes, hourly, daily, weekly) or enter a raw cron expression for full control. Each trigger has a configurable timezone (default: UTC) and handles daylight saving time transitions automatically.
+
+The minimum schedule interval is 10 minutes. Scheduled triggers use `{{scheduledTime}}` and `{{timestamp}}` as prompt template variables (webhook-specific variables like `{{body}}` are not available since there is no inbound HTTP request).
 
 ### Trigger Limits and Guidance
 
-Webhook triggers are designed for low-volume invocations from trusted sources and are best suited for short-lived tasks.
+Triggers are designed for low-volume invocations from trusted sources and are best suited for short-lived tasks.
 
-- **Personal webhooks**: Execute in the same sandbox container as a user's Cloud Agent sessions. You can view/join invocations live.
-- **Organization webhooks**: Execute in dedicated compute resources as a bot user, similar to Code Review sessions. You can share/fork the sessions when they're complete.
+- **Personal triggers**: Execute in the same sandbox container as a user's Cloud Agent sessions. You can view/join invocations live.
+- **Organization triggers**: Execute in dedicated compute resources as a bot user, similar to Code Review sessions. You can share/fork the sessions when they're complete.
 
 Additional limits:
 
@@ -144,11 +207,22 @@ Additional limits:
 - **Retention**: only the **most recent 100 requests per trigger** are retained
 - **In-flight cap**: at most **20 requests per trigger** can be in `captured` or `inprogress` at once (returns `429`)
 
-The webhook endpoint will return rate limit responses when the number of queued or processing requests exceeds system capacity.
+The trigger endpoint will return rate limit responses when the number of queued or processing requests exceeds system capacity.
 
-### Webhook Prompt Template Variables
+### Request History
 
-You can reference request data in a trigger’s prompt template using these placeholders:
+Open a trigger's request history to inspect recent invocations. History entries
+show the source (webhook or scheduled), status such as captured, in progress,
+success, or failed, request metadata, payload details when available, and links
+or sharing actions for the resulting session. Use this view to debug webhook
+payloads, scheduled runs, and organization handoff without changing the trigger
+configuration.
+
+### Prompt Template Variables
+
+You can reference data in a trigger’s prompt template using these placeholders.
+
+**Webhook triggers:**
 
 - `{{body}}` - raw request body (string)
 - `{{bodyJson}}` - pretty-printed JSON if parseable, otherwise raw body
@@ -157,6 +231,11 @@ You can reference request data in a trigger’s prompt template using these plac
 - `{{headers}}` - JSON-formatted request headers
 - `{{query}}` - query string without leading `?` (empty if none)
 - `{{sourceIp}}` - client IP if provided (falls back to `unknown`)
+- `{{timestamp}}` - capture timestamp (ISO string)
+
+**Scheduled triggers:**
+
+- `{{scheduledTime}}` - the time the schedule fired (ISO string)
 - `{{timestamp}}` - capture timestamp (ISO string)
 
 {% callout type="warning" title="Security Considerations" %}

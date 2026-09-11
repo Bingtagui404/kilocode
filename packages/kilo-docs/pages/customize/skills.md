@@ -5,7 +5,7 @@ description: "Extend Kilo Code capabilities with skills"
 
 # Skills
 
-Kilo Code implements [Agent Skills](https://agentskills.io/), a lightweight, open format for extending AI agent capabilities with specialized knowledge and workflows.
+Kilo Code implements [Agent Skills](https://agentskills.io/home), a lightweight, open format for extending AI agent capabilities with specialized knowledge and workflows.
 
 ## What Are Agent Skills?
 
@@ -47,84 +47,211 @@ This means:
 
 Skills are loaded from multiple locations, allowing both personal skills and project-specific instructions.
 
+{% tabs %}
+{% tab label="VSCode" %}
+
 ### Global Skills (User-Level)
 
-Global skills are located in the `.kilocode` directory within your Home directory.
+Global skills are located in the `.kilo` directory within your Home directory:
 
-- Mac and Linux: `~/.kilocode/skills/`
-- Windows: `\Users\<yourUser>\.kilocode\`
+- Mac and Linux: `~/.kilo/skills/`
+- Windows: `\Users\<yourUser>\.kilo\skills\`
 
 ```
-~/.kilocode/
-├── skills/                    # Generic skills (all modes)
-│   ├── my-skill/
-│   │   └── SKILL.md
-│   └── another-skill/
-│       └── SKILL.md
-├── skills-code/              # Code mode only
-│   └── refactoring/
-│       └── SKILL.md
-└── skills-architect/         # Architect mode only
-    └── system-design/
+~/.kilo/
+└── skills/                    # Generic skills (all modes)
+    ├── my-skill/
+    │   └── SKILL.md
+    └── another-skill/
         └── SKILL.md
 ```
 
 ### Project Skills (Workspace-Level)
 
-Located in `.kilocode/skills/` within your project:
+Located in `.kilo/skills/` within your project:
 
 ```
 your-project/
-└── .kilocode/
-    ├── skills/               # Generic skills for this project
-    │   └── project-conventions/
-    │       └── SKILL.md
-    └── skills-code/          # Code mode skills for this project
-        └── linting-rules/
+└── .kilo/
+    └── skills/               # Generic skills for this project
+        └── project-conventions/
             └── SKILL.md
 ```
 
-## Mode-Specific Skills
+### Compatibility Directories
 
-To create a skill that only appears in a specific mode:
+For interoperability with other tools, Kilo Code also loads skills from:
 
-```bash
-# For Code mode only
-mkdir -p ~/.kilocode/skills-code/typescript-patterns
+- `.agents/skills/` — Open agent standard, loaded by default
+- `.claude/skills/` — Claude Code compatibility, loaded when Claude Code Compatibility is enabled
 
-# For Architect mode only
-mkdir -p ~/.kilocode/skills-architect/microservices
+### Additional Skill Paths and Remote URLs
+
+You can configure extra skill locations and remote skill URLs in your `kilo.jsonc` config (project or global):
+
+```jsonc
+{
+  "skills": {
+    "paths": ["/path/to/shared/skills", "~/my-skills", "relative/skills"],
+    "urls": ["https://example.com/.well-known/skills/"],
+  },
+}
 ```
 
-The directory naming pattern is `skills-{mode-slug}` where `{mode-slug}` matches the mode's identifier (e.g., `code`, `architect`, `ask`, `debug`).
+The `skills.paths` key accepts absolute paths, `~/` home-relative paths, or paths relative to the project root. The `skills.urls` key accepts URLs to remote skill directories that serve an `index.json` manifest.
+
+The remote server must serve an `index.json` file at the URL path with the following structure:
+
+```json
+{
+  "skills": [
+    { "name": "skill-name", "version": "2", "files": ["SKILL.md", "references/file.md"] }
+  ]
+}
+```
+
+Each skill object contains:
+- `name`: The skill name (must match the directory name)
+- `version`: Optional version string for refreshing cached skill files
+- `files`: Array of files to fetch for this skill (must include `SKILL.md`)
+
+Files are downloaded from `{url}/{skill-name}/{file}` paths.
+
+When you change a remote skill's contents or file list, also change its `version`. On the next skill rediscovery (`/reload` or a new session), Kilo downloads the complete new version before atomically replacing the cached directory. If any download fails, Kilo keeps the previous cached version.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+### Global Skills (User-Level)
+
+Global skills are located in the `.kilo` directory within your Home directory:
+
+- Mac and Linux: `~/.kilo/skills/`
+- Windows: `\Users\<yourUser>\.kilo\skills\`
+
+```
+~/.kilo/
+└── skills/                    # Generic skills (all modes)
+    ├── my-skill/
+    │   └── SKILL.md
+    └── another-skill/
+        └── SKILL.md
+```
+
+### Project Skills (Workspace-Level)
+
+Located in `.kilo/skills/` within your project:
+
+```
+your-project/
+└── .kilo/
+    └── skills/               # Generic skills for this project
+        └── project-conventions/
+            └── SKILL.md
+```
+
+### Compatibility Directories
+
+For interoperability with other tools, the CLI also loads skills from:
+
+- `.claude/skills/` — Claude Code compatibility
+- `.agents/skills/` — Open agent standard
+
+### Additional Skill Paths and Remote URLs
+
+You can configure extra skill locations and remote skill URLs in your `kilo.jsonc` config (project or global):
+
+```jsonc
+{
+  "skills": {
+    "paths": ["/path/to/shared/skills", "~/my-skills", "relative/skills"],
+    "urls": ["https://example.com/.well-known/skills/"],
+  },
+}
+```
+
+The `skills.paths` key accepts absolute paths, `~/` home-relative paths, or paths relative to the project root. The `skills.urls` key accepts URLs to remote skill directories that serve an `index.json` manifest.
+
+The remote server must serve an `index.json` file at the URL path with the following structure:
+
+```json
+{
+  "skills": [
+    { "name": "skill-name", "version": "2", "files": ["SKILL.md", "references/file.md"] }
+  ]
+}
+```
+
+Each skill object contains:
+- `name`: The skill name (must match the directory name)
+- `version`: Optional version string for refreshing cached skill files
+- `files`: Array of files to fetch for this skill (must include `SKILL.md`)
+
+Files are downloaded from `{url}/{skill-name}/{file}` paths.
+
+When you change a remote skill's contents or file list, also change its `version`. On the next skill rediscovery (`/reload` or a new session), Kilo downloads the complete new version before atomically replacing the cached directory. If any download fails, Kilo keeps the previous cached version.
+
+{% /tab %}
+{% /tabs %}
+
+## Mode-Specific Skills
+
+{% tabs %}
+{% tab label="VSCode" %}
+
+The new platform does not use mode-specific skill directories. All skills are loaded into a shared pool and the agent decides which skill to invoke based on the skill's `description` field and the current task context.
+
+If you need a skill to only apply in certain situations, write a clear and specific `description` in the SKILL.md frontmatter so the agent knows when to use it.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+The new platform does not use mode-specific skill directories. All skills are loaded into a shared pool and the agent decides which skill to invoke based on the skill's `description` field and the current task context.
+
+If you need a skill to only apply in certain situations, write a clear and specific `description` in the SKILL.md frontmatter so the agent knows when to use it.
+
+{% /tab %}
+{% /tabs %}
 
 ## Priority and Overrides
 
-When multiple skills share the same name, Kilo Code uses these priority rules:
+{% tabs %}
+{% tab label="VSCode" %}
 
-1. **Project skills override global skills** - A project skill with the same name takes precedence
-2. **Mode-specific skills override generic skills** - A skill in `skills-code/` overrides the same skill in `skills/` when in Code mode
+When multiple skills share the same name, project-level skills (`.kilo/skills/`) take precedence over global skills (`~/.kilo/skills/`). Skills from compatibility directories (`.claude/skills/`, `.agents/skills/`) and additional configured paths are loaded alongside project and global skills.
 
-This allows you to:
+{% /tab %}
+{% tab label="CLI" %}
 
-- Define global skills for personal use
-- Override them per-project when needed
-- Customize behavior for specific modes
+When multiple skills share the same name, project-level skills (`.kilo/skills/`) take precedence over global skills (`~/.kilo/skills/`). Skills from compatibility directories (`.claude/skills/`, `.agents/skills/`) and additional configured paths are loaded alongside project and global skills.
+
+{% /tab %}
+{% /tabs %}
 
 ## When Skills Are Loaded
 
-Skills are discovered when Kilo Code initializes:
+{% tabs %}
+{% tab label="VSCode" %}
 
-- When VSCode starts
-- When you reload the VSCode window (`Cmd+Shift+P` → "Developer: Reload Window")
+Skills are discovered when a session starts. The CLI scans all configured skill directories and reads metadata (name, description, file path) for each skill.
 
-Skills directories are monitored for changes to `SKILL.md` files. However, the most reliable way to pick up new skills is to reload VS or the Kilo Code extension.
+- In the **CLI**: Skills are loaded when you start a new session or run `kilo run`
+- In the **VS Code extension**: Skills are loaded when the extension connects to the CLI server
 
-**Adding or modifying skills requires reloading VSCode for changes to take effect.**
+Skills are re-scanned at the start of each new session. To pick up newly added or modified skills without starting a new session, use `/reload`.
 
-## Using Symlinks
+{% /tab %}
+{% tab label="CLI" %}
 
-You can symlink skills directories to share skills across machines or from a central repository. When using symlinks, the skill's `name` field must match the **symlink name**, not the target directory name.
+Skills are discovered when a session starts. The CLI scans all configured skill directories and reads metadata (name, description, file path) for each skill.
+
+- In the **CLI**: Skills are loaded when you start a new session or run `kilo run`
+- In the **VS Code extension**: Skills are loaded when the extension connects to the CLI server
+
+Skills are re-scanned at the start of each new session. To pick up newly added or modified skills without starting a new session, use `/reload`.
+
+{% /tab %}
+{% /tabs %}
 
 ## SKILL.md Format
 
@@ -152,13 +279,13 @@ You can include examples, guidelines, code snippets, etc.
 
 Per the [Agent Skills specification](https://agentskills.io/specification):
 
-| Field           | Required | Description                                                                                           |
-| --------------- | -------- | ----------------------------------------------------------------------------------------------------- |
-| `name`          | Yes      | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen. |
-| `description`   | Yes      | Max 1024 characters. Describes what the skill does and when to use it.                                |
-| `license`       | No       | License name or reference to a bundled license file                                                   |
-| `compatibility` | No       | Environment requirements (intended product, system packages, network access, etc.)                    |
-| `metadata`      | No       | Arbitrary key-value mapping for additional metadata                                                   |
+| Field | Required | Description |
+|---|---|---|
+| `name` | Yes | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen. |
+| `description` | Yes | Max 1024 characters. Describes what the skill does and when to use it. |
+| `license` | No | License name or reference to a bundled license file |
+| `compatibility` | No | Environment requirements (intended product, system packages, network access, etc.) |
+| `metadata` | No | Arbitrary key-value mapping for additional metadata |
 
 ### Example with Optional Fields
 
@@ -211,71 +338,146 @@ my-skill/
 
 These additional files can be referenced from your skill's instructions, allowing the agent to read documentation, execute scripts, or use templates as needed.
 
+## Shell commands in skills
+
+A `SKILL.md` body can embed shell commands with the `` !`command` `` syntax. When the agent loads the skill, each command runs and its standard output replaces the placeholder before the skill content reaches the model, grounding the skill in live data:
+
+```markdown
+---
+name: repo-status
+description: Summarize the current state of the repository
+---
+
+The working tree currently contains:
+
+!`git status --short`
+```
+
+Because the agent decides when to load a skill, embedded commands never run silently:
+
+- **Trusted skills only** — commands execute only in skills from trusted locations: global skills (such as `~/.kilo/skills/`, `~/.agents/skills/`, and `~/.claude/skills/`), skills built into Kilo Code, and absolute skill paths declared in global config. Project skills (`.kilo/skills/` in a repository) and skills fetched from remote URLs never execute commands; their placeholders are replaced with a marker noting the skill is untrusted.
+- **Approval required** — when the agent loads a trusted skill containing commands, every command in the file is listed in a single permission prompt before anything runs. Approving runs all of them; rejecting aborts the skill load. This prompt appears even when bash commands are otherwise auto-approved, and a deny rule on any command still blocks it.
+- **Kill switch** — set the `KILO_DISABLE_SKILL_SHELL` environment variable to disable embedded command execution entirely.
+
+Commands run in the project directory with a per-command timeout, and output is truncated before inlining. Placeholders inside fenced code blocks are treated as documentation examples and never execute, and command output is never re-scanned for further placeholders.
+
 ## Example: Creating a Skill
+
+{% tabs %}
+{% tab label="VSCode" %}
 
 1. Create the skill directory:
 
    ```bash
-   mkdir -p ~/.kilocode/skills/api-design
+   mkdir -p ~/.kilo/skills/api-design
    ```
 
-2. Create `SKILL.md`:
+2. Create `SKILL.md` (see content below)
 
-   ```markdown
-   ---
-   name: api-design
-   description: REST API design best practices and conventions
-   ---
+3. Start a new session to pick up the skill
 
-   # API Design Guidelines
+{% /tab %}
+{% tab label="CLI" %}
 
-   When designing REST APIs, follow these conventions:
+1. Create the skill directory:
 
-   ## URL Structure
-
-   - Use plural nouns for resources: `/users`, `/orders`
-   - Use kebab-case for multi-word resources: `/order-items`
-   - Nest related resources: `/users/{id}/orders`
-
-   ## HTTP Methods
-
-   - GET: Retrieve resources
-   - POST: Create new resources
-   - PUT: Replace entire resource
-   - PATCH: Partial update
-   - DELETE: Remove resource
-
-   ## Response Codes
-
-   - 200: Success
-   - 201: Created
-   - 400: Bad Request
-   - 404: Not Found
-   - 500: Server Error
+   ```bash
+   mkdir -p ~/.kilo/skills/api-design
    ```
 
-3. Reload VSCode to load the skill
+2. Create `SKILL.md` (see content below)
 
-4. The skill will now be available in all modes
+3. Start a new session to pick up the skill
+
+{% /tab %}
+{% /tabs %}
+
+Example `SKILL.md`:
+
+```markdown
+---
+name: api-design
+description: REST API design best practices and conventions
+---
+
+# API Design Guidelines
+
+When designing REST APIs, follow these conventions:
+
+## URL Structure
+
+- Use plural nouns for resources: `/users`, `/orders`
+- Use kebab-case for multi-word resources: `/order-items`
+- Nest related resources: `/users/{id}/orders`
+
+## HTTP Methods
+
+- GET: Retrieve resources
+- POST: Create new resources
+- PUT: Replace entire resource
+- PATCH: Partial update
+- DELETE: Remove resource
+
+## Response Codes
+
+- 200: Success
+- 201: Created
+- 400: Bad Request
+- 404: Not Found
+- 500: Server Error
+```
 
 ## Finding Skills
 
-You can discover and install community-created skills through:
+{% tabs %}
+{% tab label="VSCode" %}
 
-- **Kilo Marketplace** - Browse skills directly in the Kilo Code extension via the Marketplace tab, or explore the [Kilo Marketplace repository](https://github.com/Kilo-Org/kilo-marketplace) on GitHub
-- [Agent Skills Specification](https://agentskills.io/home) - The open specification that skills follow, enabling interoperability across different AI agents
+The new platform does not have a marketplace UI yet. You can find and share skills through:
+
+- **[Kilo Marketplace repository](https://github.com/Kilo-Org/kilo-marketplace)** — Browse community skills on GitHub and manually download them into your skills directory
+- **[Agent Skills Specification](https://agentskills.io/home)** — The open specification that skills follow, enabling interoperability across different AI agents
+- **Remote URLs** — Use the `skills.urls` config key to load skills directly from URLs without manually downloading them
+
+{% /tab %}
+{% tab label="CLI" %}
+
+The new platform does not have a marketplace UI yet. You can find and share skills through:
+
+- **[Kilo Marketplace repository](https://github.com/Kilo-Org/kilo-marketplace)** — Browse community skills on GitHub and manually download them into your skills directory
+- **[Agent Skills Specification](https://agentskills.io/home)** — The open specification that skills follow, enabling interoperability across different AI agents
+- **Remote URLs** — Use the `skills.urls` config key to load skills directly from URLs without manually downloading them
+
+{% /tab %}
+{% /tabs %}
 
 ## Troubleshooting
 
 ### Skill Not Loading?
 
-1. **Check the Output panel**: Open `View` → `Output` → Select "Kilo Code" from dropdown. Look for skill-related errors.
+{% tabs %}
+{% tab label="VSCode" %}
 
-2. **Verify frontmatter**: Ensure `name` exactly matches the directory name and `description` is present.
+1. **Verify frontmatter**: Ensure `name` and `description` are present in the YAML frontmatter. The `name` does not need to match the directory name but should be unique across all loaded skills.
 
-3. **Reload VSCode**: Skills are loaded at startup. Use `Cmd+Shift+P` → "Developer: Reload Window".
+2. **Reload or start a new session**: Use `/reload` to pick up changes without losing your current session, or start a new session.
 
-4. **Check file location**: Ensure `SKILL.md` is directly inside the skill directory, not nested further.
+3. **Check file location**: Ensure `SKILL.md` is directly inside the skill directory (e.g., `.kilo/skills/my-skill/SKILL.md`), not nested further.
+
+4. **Check config paths**: If using `skills.paths` or `skills.urls`, verify the paths and URLs are correct in your `kilo.jsonc`.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+1. **Verify frontmatter**: Ensure `name` and `description` are present in the YAML frontmatter. The `name` does not need to match the directory name but should be unique across all loaded skills.
+
+2. **Reload or start a new session**: Use `/reload` to pick up changes without losing your current session, or start a new session.
+
+3. **Check file location**: Ensure `SKILL.md` is directly inside the skill directory (e.g., `.kilo/skills/my-skill/SKILL.md`), not nested further.
+
+4. **Check config paths**: If using `skills.paths` or `skills.urls`, verify the paths and URLs are correct in your `kilo.jsonc`.
+
+{% /tab %}
+{% /tabs %}
 
 ### Verifying a Skill is Available
 
@@ -291,21 +493,43 @@ If the agent confirms the skill is available, you're ready to use it. If not, ch
 
 ### Checking if a Skill Was Used
 
-To see if a skill was actually used during a conversation, look for a `read_file` tool call in the chat that targets a `SKILL.md` file. When the agent decides to use a skill, it reads the full skill file into context—this appears as a file read operation in the conversation.
+{% tabs %}
+{% tab label="VSCode" %}
 
-There's currently no dedicated UI indicator showing "Skill X was activated." The `read_file` call is the most reliable way to confirm a skill was used.
+When the agent uses a skill, it invokes the `skill` tool with the skill's name. Look for a `skill` tool call in the conversation to confirm a skill was loaded. The tool output includes the full skill content injected into context.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+When the agent uses a skill, it invokes the `skill` tool with the skill's name. Look for a `skill` tool call in the conversation to confirm a skill was loaded. The tool output includes the full skill content injected into context.
+
+{% /tab %}
+{% /tabs %}
 
 ### Common Errors
 
-| Error                           | Cause                                        | Solution                                         |
-| ------------------------------- | -------------------------------------------- | ------------------------------------------------ |
-| "missing required 'name' field" | No `name` in frontmatter                     | Add `name: your-skill-name`                      |
-| "name doesn't match directory"  | Mismatch between frontmatter and folder name | Make `name` match exactly                        |
-| Skill not appearing             | Wrong directory structure                    | Verify path follows `skills/skill-name/SKILL.md` |
+| Error | Cause | Solution |
+|---|---|---|
+| "missing required 'name' field" | No `name` in frontmatter | Add `name: your-skill-name` |
+| "name doesn't match directory" | Mismatch between frontmatter and folder name | Make `name` match exactly |
+| Skill not appearing | Wrong directory structure | Verify path follows `skills/skill-name/SKILL.md` |
 
 ## Contributing to the Marketplace
 
 Have you created a skill that others might find useful? Share it with the community by contributing to the [Kilo Marketplace](https://github.com/Kilo-Org/kilo-marketplace)!
+
+{% tabs %}
+{% tab label="VSCode" %}
+
+While the new platform does not yet have a built-in marketplace UI, skills from the [Kilo Marketplace repository](https://github.com/Kilo-Org/kilo-marketplace) can be manually downloaded into your `.kilo/skills/` directory or loaded via `skills.urls` in config.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+While the new platform does not yet have a built-in marketplace UI, skills from the [Kilo Marketplace repository](https://github.com/Kilo-Org/kilo-marketplace) can be manually downloaded into your `.kilo/skills/` directory or loaded via `skills.urls` in config.
+
+{% /tab %}
+{% /tabs %}
 
 ### How to Submit Your Skill
 

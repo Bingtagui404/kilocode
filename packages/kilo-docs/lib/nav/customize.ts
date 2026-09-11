@@ -5,6 +5,7 @@ export const CustomizeNav: NavSection[] = [
     title: "Customization",
     links: [
       { href: "/customize", children: "Overview" },
+      { href: "/customize/marketplace", children: "Marketplace", platform: "new" },
       {
         href: "/customize/custom-modes",
         children: "Custom Modes",
@@ -20,9 +21,15 @@ export const CustomizeNav: NavSection[] = [
       {
         href: "/customize/custom-subagents",
         children: "Custom Subagents",
+        platform: "new",
+      },
+      {
+        href: "/customize/agent-permissions",
+        children: "Agent Permissions",
+        platform: "new",
       },
       { href: "/customize/agents-md", children: "agents.md" },
-      { href: "/customize/workflows", children: "Workflows" },
+      { href: "/customize/workflows", children: "Workflows", platform: "new" },
       { href: "/customize/skills", children: "Skills" },
       {
         href: "/customize/prompt-engineering",
@@ -44,10 +51,6 @@ export const CustomizeNav: NavSection[] = [
       {
         href: "/customize/context/kilocodeignore",
         children: ".kilocodeignore",
-      },
-      {
-        href: "/customize/context/large-projects",
-        children: "Large Projects",
       },
     ],
   },

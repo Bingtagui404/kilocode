@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import Head from "next/head"
 import Link from "next/link"
 
 // Terminal content for each tab
@@ -50,7 +51,7 @@ const terminalContent = {
     <>
       <span className="terminal-comment"># Create a custom rules file in your project</span>
       {"\n"}
-      <span className="terminal-prompt">$</span> touch .kilocode/rules.md
+      <span className="terminal-prompt">$</span> touch .kilo/rules/rules.md
       {"\n"}
       {"\n"}
       <span className="terminal-comment"># Or use the CLI to add rules</span>
@@ -149,7 +150,6 @@ const categories = [
     ),
     links: [
       { title: "Deploy", href: "/deploy-secure" },
-      { title: "Managed Indexing", href: "/deploy-secure" },
       { title: "Security Reviews", href: "/deploy-secure" },
     ],
   },
@@ -197,22 +197,26 @@ export default function HomePage() {
 
   return (
     <div className="homepage">
+      <Head>
+        <title>Kilo Code Docs: Setup, Models, MCP, Custom Modes & CLI</title>
+      </Head>
       {/* Dotted background pattern */}
       <div className="dot-pattern" />
 
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
-          <h1 className="hero-title">Kilo Code Documentation</h1>
+          <h1 className="hero-title">Kilo Documentation</h1>
           <p className="hero-subtitle">
-            Explore our guides and examples to build with Kilo Code, the most popular open source coding agent.
+            Explore guides and examples for the Kilo platform — from coding agents and AI-powered development to
+            automation and hosted agentic infrastructure.
           </p>
           <div className="hero-buttons">
             <Link href="/getting-started" className="btn btn-primary">
               Get started with Kilo Code →
             </Link>
-            <Link href="/code-with-ai" className="btn btn-secondary">
-              Explore all features
+            <Link href="/gateway" className="btn btn-secondary">
+              Explore Kilo Gateway
             </Link>
           </div>
         </div>
@@ -220,7 +224,7 @@ export default function HomePage() {
         {/* Quick Links Panel - Stripe style */}
         <div className="quick-panel">
           <div className="quick-section">
-            <h3 className="quick-title">POPULAR GUIDES</h3>
+            <h3 className="quick-title">KILO CODE</h3>
             <div className="quick-links">
               <Link href="/getting-started/installing" className="quick-link">
                 Installation Guide
@@ -250,10 +254,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Browse by Category - Three Column Layout */}
+      {/* Browse by Category - Four Column Layout */}
       <section className="categories-section">
         <div className="category-group">
-          {categories.slice(0, 3).map((category) => (
+          {categories.slice(0, 4).map((category) => (
             <div key={category.title} className="category-column">
               <h3 className="category-title">{category.title}</h3>
               <div className="category-links">
@@ -291,7 +295,7 @@ export default function HomePage() {
       <section className="terminal-section">
         <div className="terminal-intro">
           <h2 className="section-title">Try it out</h2>
-          <p className="terminal-description">Get started quickly with common Kilo Code commands</p>
+          <p className="terminal-description">Get started quickly with Kilo Code and Kilo Gateway</p>
         </div>
         <div className="terminal-container">
           <div className="terminal-tabs">
@@ -540,7 +544,7 @@ export default function HomePage() {
 
         .category-group {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 3rem;
         }
 
@@ -587,7 +591,7 @@ export default function HomePage() {
 
         .cards-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 1.5rem;
         }
 
@@ -826,7 +830,7 @@ export default function HomePage() {
 
           .quick-panel {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
           }
 
           .quick-section {

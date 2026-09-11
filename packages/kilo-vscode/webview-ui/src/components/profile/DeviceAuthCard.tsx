@@ -3,6 +3,8 @@ import { Button } from "@kilocode/kilo-ui/button"
 import { Card } from "@kilocode/kilo-ui/card"
 import { Spinner } from "@kilocode/kilo-ui/spinner"
 import { showToast } from "@kilocode/kilo-ui/toast"
+import { useDialog } from "@kilocode/kilo-ui/context/dialog"
+import { Dialog } from "@kilocode/kilo-ui/dialog"
 import { useVSCode } from "../../context/vscode"
 import { useLanguage } from "../../context/language"
 import { generateQRCode } from "../../utils/qrcode"
@@ -18,15 +20,41 @@ interface DeviceAuthCardProps {
   onRetry: () => void
 }
 
+const ERROR_LIMIT = 180
+
 const formatTime = (seconds: number): string => {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
+function compactError(error: string | undefined, fallback: string) {
+  if (!error) return fallback
+
+  const text = error.replace(/\s+/g, " ").trim()
+  const html = text.search(/<!doctype html|<html|<head|<body/i)
+  const head =
+    html >= 0
+      ? text
+          .slice(0, html)
+          .trim()
+          .replace(/[\s:,-]+$/, "")
+      : text
+
+  if (head.length > 0) {
+    if (head.length <= ERROR_LIMIT) return head
+    return `${head.slice(0, ERROR_LIMIT).trimEnd()}...`
+  }
+
+  const status = text.match(/\b([45]\d{2})\b/)?.[1]
+  if (status) return `${fallback} (${status})`
+  return fallback
+}
+
 const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
   const vscode = useVSCode()
   const language = useLanguage()
+  const dialog = useDialog()
   const [timeRemaining, setTimeRemaining] = createSignal(props.expiresIn ?? 900)
   const [qrDataUrl, setQrDataUrl] = createSignal("")
 
@@ -70,6 +98,56 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
     }
   }
 
+  const errorSummary = () => compactError(props.error, language.t("deviceAuth.status.failed"))
+
+  const hasErrorDetails = () => {
+    if (!props.error) return false
+    return errorSummary() !== props.error.replace(/\s+/g, " ").trim()
+  }
+
+  const handleCopyError = () => {
+    if (!props.error) return
+    navigator.clipboard.writeText(props.error)
+    showToast({ variant: "success", title: language.t("deviceAuth.toast.errorCopied") })
+  }
+
+  const handleShowError = () => {
+    if (!props.error) return
+
+    dialog.show(() => (
+      <Dialog title={language.t("deviceAuth.error.detailsTitle")} fit>
+        <div style={{ display: "flex", "flex-direction": "column", gap: "12px", width: "min(720px, 80vw)" }}>
+          <pre
+            style={{
+              margin: 0,
+              padding: "12px",
+              "max-height": "50vh",
+              overflow: "auto",
+              background: "var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background))",
+              color: "var(--vscode-foreground)",
+              border: "1px solid var(--border-weak-base, var(--vscode-panel-border))",
+              "border-radius": "6px",
+              "font-size": "var(--kilo-font-size-12)",
+              "line-height": "1.5",
+              "white-space": "pre-wrap",
+              "word-break": "break-word",
+            }}
+          >
+            {props.error}
+          </pre>
+          <div class="dialog-confirm-actions">
+            <Button variant="secondary" size="large" onClick={handleCopyError}>
+              {language.t("deviceAuth.action.copyError")}
+            </Button>
+            <Button variant="primary" size="large" onClick={() => dialog.close()}>
+              {language.t("common.close")}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    ))
+  }
+
   return (
     <Switch>
       {/* Initiating state */}
@@ -77,7 +155,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
         <Card>
           <div style={{ display: "flex", "align-items": "center", gap: "8px" }}>
             <Spinner style={{ width: "14px", height: "14px" }} />
-            <span style={{ "font-size": "13px", color: "var(--vscode-descriptionForeground)" }}>
+            <span style={{ "font-size": "var(--kilo-font-size-13)", color: "var(--vscode-descriptionForeground)" }}>
               {language.t("deviceAuth.status.initiating")}
             </span>
           </div>
@@ -89,7 +167,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
         <Card>
           <h3
             style={{
-              "font-size": "15px",
+              "font-size": "var(--kilo-font-size-15)",
               "font-weight": "600",
               color: "var(--vscode-foreground)",
               margin: "0 0 16px 0",
@@ -103,7 +181,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
           <div style={{ "margin-bottom": "12px" }}>
             <p
               style={{
-                "font-size": "12px",
+                "font-size": "var(--kilo-font-size-12)",
                 "font-weight": "600",
                 color: "var(--vscode-descriptionForeground)",
                 margin: "0 0 6px 0",
@@ -127,7 +205,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
                   border: "1px solid var(--vscode-input-border, var(--vscode-panel-border))",
                   "border-radius": "3px",
                   padding: "6px 8px",
-                  "font-size": "12px",
+                  "font-size": "var(--kilo-font-size-12)",
                   color: "var(--vscode-input-foreground)",
                   overflow: "hidden",
                   "text-overflow": "ellipsis",
@@ -176,7 +254,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
             <div style={{ "margin-bottom": "16px" }}>
               <p
                 style={{
-                  "font-size": "12px",
+                  "font-size": "var(--kilo-font-size-12)",
                   "font-weight": "600",
                   color: "var(--vscode-descriptionForeground)",
                   margin: "0 0 6px 0",
@@ -200,7 +278,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
               >
                 <span
                   style={{
-                    "font-size": "24px",
+                    "font-size": "var(--kilo-font-size-24)",
                     "font-weight": "700",
                     "font-family": "var(--vscode-editor-font-family, monospace)",
                     "letter-spacing": "4px",
@@ -211,7 +289,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
                 </span>
                 <p
                   style={{
-                    "font-size": "11px",
+                    "font-size": "var(--kilo-font-size-11)",
                     color: "var(--vscode-descriptionForeground)",
                     margin: "4px 0 0 0",
                   }}
@@ -235,7 +313,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
             <Spinner style={{ width: "12px", height: "12px" }} />
             <span
               style={{
-                "font-size": "12px",
+                "font-size": "var(--kilo-font-size-12)",
                 color: "var(--vscode-descriptionForeground)",
               }}
             >
@@ -254,10 +332,10 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
       <Match when={props.status === "success"}>
         <Card>
           <div style={{ "text-align": "center" }}>
-            <span style={{ "font-size": "24px" }}>✅</span>
+            <span style={{ "font-size": "var(--kilo-font-size-24)" }}>✅</span>
             <p
               style={{
-                "font-size": "14px",
+                "font-size": "var(--kilo-font-size-14)",
                 "font-weight": "600",
                 color: "var(--vscode-foreground)",
                 margin: "8px 0 0 0",
@@ -273,19 +351,31 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
       <Match when={props.status === "error"}>
         <Card>
           <div style={{ "text-align": "center" }}>
-            <span style={{ "font-size": "24px" }}>❌</span>
+            <span style={{ "font-size": "var(--kilo-font-size-24)" }}>❌</span>
             <p
               style={{
-                "font-size": "13px",
+                "font-size": "var(--kilo-font-size-13)",
                 color: "var(--vscode-errorForeground)",
                 margin: "8px 0 12px 0",
               }}
             >
-              {props.error || language.t("deviceAuth.status.failed")}
+              {errorSummary()}
             </p>
-            <Button variant="primary" onClick={props.onRetry}>
-              {language.t("common.retry")}
-            </Button>
+            <div style={{ display: "flex", gap: "8px", "justify-content": "center", "flex-wrap": "wrap" }}>
+              <Show when={props.error}>
+                <Button variant="secondary" onClick={handleCopyError}>
+                  {language.t("deviceAuth.action.copyError")}
+                </Button>
+              </Show>
+              <Show when={hasErrorDetails()}>
+                <Button variant="ghost" onClick={handleShowError}>
+                  {language.t("deviceAuth.action.showDetails")}
+                </Button>
+              </Show>
+              <Button variant="primary" onClick={props.onRetry}>
+                {language.t("common.retry")}
+              </Button>
+            </div>
           </div>
         </Card>
       </Match>
@@ -296,7 +386,7 @@ const DeviceAuthCard: Component<DeviceAuthCardProps> = (props) => {
           <div style={{ "text-align": "center" }}>
             <p
               style={{
-                "font-size": "13px",
+                "font-size": "var(--kilo-font-size-13)",
                 color: "var(--vscode-descriptionForeground)",
                 margin: "0 0 12px 0",
               }}

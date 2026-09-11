@@ -11,11 +11,9 @@
  * process.env.PATH so all subsequent child_process calls benefit.
  */
 
-import { type ExecFileOptionsWithStringEncoding, execFile } from "child_process"
+import { type ExecFileOptionsWithStringEncoding } from "child_process"
 import * as os from "os"
-import { promisify } from "util"
-
-const run = promisify(execFile)
+import { exec } from "../util/process"
 
 // Environment variable keys match: letters, digits, underscores, starting with a non-digit.
 const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*=/
@@ -63,6 +61,15 @@ function parseEnvOutput(stdout: string): Record<string, string> {
  * Results are cached for 1 minute (10 seconds when the fallback was used).
  */
 export async function getShellEnvironment(): Promise<Record<string, string>> {
+  // Windows has no login shell to resolve; the extension-host environment
+  // already is the user's environment.
+  if (process.platform === "win32") {
+    const env: Record<string, string> = {}
+    for (const [key, value] of Object.entries(process.env)) {
+      if (typeof value === "string") env[key] = value
+    }
+    return env
+  }
   const now = Date.now()
   const ttl = wasFallback ? FALLBACK_TTL : TTL
   if (cached && now - cacheTime < ttl) return { ...cached }
@@ -70,7 +77,7 @@ export async function getShellEnvironment(): Promise<Record<string, string>> {
   const shell = process.env.SHELL || (process.platform === "darwin" ? "/bin/zsh" : "/bin/bash")
 
   try {
-    const { stdout } = await run(shell, ["-lc", "env"], {
+    const { stdout } = await exec(shell, ["-lc", "env"], {
       timeout: 10_000,
       env: { ...process.env, HOME: os.homedir() },
     })
@@ -127,7 +134,7 @@ export async function execWithShellEnv(
   options?: Omit<ExecFileOptionsWithStringEncoding, "encoding">,
 ): Promise<{ stdout: string; stderr: string }> {
   try {
-    return await run(cmd, args, { ...options, encoding: "utf8" })
+    return await exec(cmd, args, options)
   } catch (error) {
     if (
       process.platform !== "darwin" ||
@@ -141,13 +148,13 @@ export async function execWithShellEnv(
     // Already resolved and PATH was actually changed — no point retrying resolution.
     // Just retry with the (already-patched) process.env.
     if (fixed) {
-      return await run(cmd, args, { ...options, encoding: "utf8" })
+      return await exec(cmd, args, options)
     }
 
     // If another caller is already resolving, wait for it then retry.
     if (fixing) {
       await fixing
-      return await run(cmd, args, { ...options, encoding: "utf8" })
+      return await exec(cmd, args, options)
     }
 
     console.log(`[shell-env] "${cmd}" not found, resolving shell environment`)
@@ -159,7 +166,7 @@ export async function execWithShellEnv(
       fixing = null
     }
 
-    return await run(cmd, args, { ...options, encoding: "utf8" })
+    return await exec(cmd, args, options)
   }
 }
 

@@ -5,6 +5,8 @@
 // equivalents in @kilocode/sdk. All API types (Session, Event, Agent,
 // McpStatus, Config, etc.) should be imported from "@kilocode/sdk/v2/client".
 
+import type { IndexingStatus as SdkIndexingStatus } from "@kilocode/sdk/v2/client"
+
 /** Connection config used by the extension to reach the local CLI server */
 export interface ServerConfig {
   baseUrl: string
@@ -18,20 +20,6 @@ interface ProviderAuthAuthorization {
   instructions: string
 }
 
-// Kilo notification from kilo-gateway
-export interface KilocodeNotificationAction {
-  actionText: string
-  actionURL: string
-}
-
-export interface KilocodeNotification {
-  id: string
-  title: string
-  message: string
-  action?: KilocodeNotificationAction
-  showIn?: string[]
-}
-
 // Profile types from kilo-gateway
 export interface KilocodeOrganization {
   id: string
@@ -43,6 +31,8 @@ export interface KilocodeProfile {
   email: string
   name?: string
   organizations?: KilocodeOrganization[]
+  selectedOrganizationId?: string
+  hasPersonalAccount?: boolean
 }
 
 export interface KilocodeBalance {
@@ -94,6 +84,8 @@ export interface CloudSessionData {
   messages: CloudSessionMessage[]
 }
 
+export type IndexingStatus = SdkIndexingStatus
+
 /** VS Code editor context sent alongside messages to the CLI backend */
 interface WorktreeFileDiff {
   file: string
@@ -113,6 +105,4 @@ export interface EditorContext {
   activeFile?: string
   /** User's default shell (from vscode.env.shell) */
   shell?: string
-  /** User's timezone (e.g. "Europe/Amsterdam") */
-  timezone?: string
 }

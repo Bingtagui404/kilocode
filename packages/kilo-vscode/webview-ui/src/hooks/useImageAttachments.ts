@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js"
 import { ACCEPTED_IMAGE_TYPES, isAcceptedImageType, isDragLeavingComponent } from "./image-attachments-utils"
+import { extractDropPaths, KILO_FILE_PATH_MIME } from "../utils/path-mentions"
 
 export interface ImageAttachment {
   id: string
@@ -8,13 +9,25 @@ export interface ImageAttachment {
   dataUrl: string
 }
 
+/** Callback for handling text/URI file path drops. */
+export type FilePathDropHandler = (paths: string[]) => void
+
 export function useImageAttachments() {
   const [images, setImages] = createSignal<ImageAttachment[]>([])
   const [dragging, setDragging] = createSignal(false)
+  const [pending, setPending] = createSignal(0)
+  let onFilePaths: FilePathDropHandler | undefined
+
+  /** Register a handler for file path drops (text/URI-list). */
+  const setFilePathDropHandler = (handler: FilePathDropHandler) => {
+    onFilePaths = handler
+  }
 
   const add = (file: File) => {
     if (!isAcceptedImageType(file.type)) return
     const reader = new FileReader()
+    setPending((count) => count + 1)
+    reader.onloadend = () => setPending((count) => count - 1)
     reader.onload = () => {
       const attachment: ImageAttachment = {
         id: crypto.randomUUID(),
@@ -47,8 +60,13 @@ export function useImageAttachments() {
   }
 
   const handleDragOver = (event: DragEvent) => {
-    const hasFiles = event.dataTransfer?.types.includes("Files")
-    if (!hasFiles) return
+    const types = event.dataTransfer?.types
+    if (!types) return
+    // Accept file drops, VS Code URI-list drops, and internal file-path drags.
+    // Do NOT accept bare text/plain here — that would intercept normal text drags.
+    const acceptable =
+      types.includes("Files") || types.includes("application/vnd.code.uri-list") || types.includes(KILO_FILE_PATH_MIME)
+    if (!acceptable) return
     event.preventDefault()
     setDragging(true)
   }
@@ -62,7 +80,18 @@ export function useImageAttachments() {
   const handleDrop = (event: DragEvent) => {
     setDragging(false)
     event.preventDefault()
-    const files = event.dataTransfer?.files
+    const dt = event.dataTransfer
+    if (!dt) return
+
+    // First: check for text/URI file path drops (VS Code explorer, editor tabs)
+    const paths = extractDropPaths(dt)
+    if (paths && paths.length > 0 && onFilePaths) {
+      onFilePaths(paths)
+      return
+    }
+
+    // Second: fall through to image file drops
+    const files = dt.files
     if (!files) return
     for (const file of Array.from(files)) add(file)
   }
@@ -70,6 +99,7 @@ export function useImageAttachments() {
   return {
     images,
     dragging,
+    pending: () => pending() > 0,
     add,
     remove,
     clear,
@@ -78,5 +108,6 @@ export function useImageAttachments() {
     handleDragOver,
     handleDragLeave,
     handleDrop,
+    setFilePathDropHandler,
   }
 }

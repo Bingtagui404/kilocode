@@ -1,22 +1,21 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
-import { execFile } from "child_process"
-import { promisify } from "util"
+import { randomUUID } from "crypto"
 import * as yaml from "yaml"
+import { exec } from "../../util/process"
 import type {
   MarketplaceItem,
+  MarketplaceItemRef,
   SkillMarketplaceItem,
   McpMarketplaceItem,
-  ModeMarketplaceItem,
+  AgentMarketplaceItem,
   McpInstallationMethod,
   InstallMarketplaceItemOptions,
   InstallResult,
   RemoveResult,
 } from "./types"
 import { MarketplacePaths } from "./paths"
-
-const exec = promisify(execFile)
 
 export class MarketplaceInstaller {
   constructor(private paths: MarketplacePaths) {}
@@ -29,7 +28,7 @@ export class MarketplaceInstaller {
     const scope = options.target ?? "project"
     if (item.type === "skill") return this.installSkill(item, scope, workspace)
     if (item.type === "mcp") return this.installMcp(item, options, scope, workspace)
-    return this.installMode(item, scope, workspace)
+    return this.installAgent(item, scope, workspace)
   }
 
   // ── MCP ─────────────────────────────────────────────────────────────
@@ -80,13 +79,14 @@ export class MarketplaceInstaller {
   private buildMcpEntry(content: string, params?: Record<string, unknown>): Record<string, unknown> {
     const filtered = Object.fromEntries(Object.entries(params ?? {}).filter(([k]) => k !== "__method"))
     const replaced = Object.keys(filtered).length > 0 ? substituteParams(content, filtered) : content
-    return JSON.parse(replaced)
+    const raw = JSON.parse(replaced) as Record<string, unknown>
+    return normalizeMcpEntry(raw)
   }
 
-  // ── Mode ────────────────────────────────────────────────────────────
+  // ── Agent ───────────────────────────────────────────────────────────
 
-  async installMode(
-    item: ModeMarketplaceItem,
+  async installAgent(
+    item: AgentMarketplaceItem,
     scope: "project" | "global",
     workspace?: string,
   ): Promise<InstallResult> {
@@ -94,16 +94,76 @@ export class MarketplaceInstaller {
       return { success: false, slug: item.id, error: "No workspace directory for project-scope install" }
     }
 
-    const config = await this.readConfig(scope, workspace)
-    if (!config.agent) config.agent = {}
-
-    if (config.agent[item.id]) {
-      return { success: false, slug: item.id, error: "Mode already installed. Remove it first." }
+    if (!isSafeId(item.id)) {
+      return { success: false, slug: item.id, error: "Invalid agent id" }
     }
 
-    config.agent[item.id] = convertModeToAgent(item.content)
+    const dir = this.paths.agentsDir(scope, workspace)
+    await fs.mkdir(dir, { recursive: true })
 
-    await this.writeConfig(scope, workspace, config)
+    const filepath = path.join(dir, `${item.id}.md`)
+    if (!contains(dir, filepath)) {
+      return { success: false, slug: item.id, error: "Invalid agent id" }
+    }
+
+    try {
+      await fs.access(filepath)
+      return { success: false, slug: item.id, error: "Agent already installed. Remove it first." }
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+    }
+
+    const { prompt, ...front } = item.content
+    const frontmatter = yaml.stringify(front).trimEnd()
+    const content = `---\n${frontmatter}\n---\n\n${prompt}\n`
+    await fs.writeFile(filepath, content, "utf-8")
+
+    // Migration: remove stale kilo.json agent entry with same id if present
+    const config = await this.readConfig(scope, workspace)
+    if (config.agent?.[item.id]) {
+      delete (config.agent as Record<string, unknown>)[item.id]
+      if (Object.keys(config.agent as object).length === 0) delete config.agent
+      await this.writeConfig(scope, workspace, config)
+    }
+
+    return { success: true, slug: item.id, filePath: filepath, line: 1 }
+  }
+
+  async removeAgent(
+    item: Pick<AgentMarketplaceItem, "id">,
+    scope: "project" | "global",
+    workspace?: string,
+  ): Promise<RemoveResult> {
+    if (scope === "project" && !workspace) {
+      return { success: false, slug: item.id, error: "No workspace directory for project-scope removal" }
+    }
+
+    if (!isSafeId(item.id)) {
+      return { success: false, slug: item.id, error: "Invalid agent id" }
+    }
+
+    const dir = this.paths.agentsDir(scope, workspace)
+    const filepath = path.join(dir, `${item.id}.md`)
+    if (!contains(dir, filepath)) {
+      return { success: false, slug: item.id, error: "Invalid agent id" }
+    }
+
+    try {
+      await fs.unlink(filepath)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        return { success: false, slug: item.id, error: String(err) }
+      }
+    }
+
+    // Also clean up any stale kilo.json agent entry
+    const config = await this.readConfig(scope, workspace)
+    if (config.agent?.[item.id]) {
+      delete (config.agent as Record<string, unknown>)[item.id]
+      if (Object.keys(config.agent as object).length === 0) delete config.agent
+      await this.writeConfig(scope, workspace, config)
+    }
+
     return { success: true, slug: item.id }
   }
 
@@ -114,6 +174,10 @@ export class MarketplaceInstaller {
     scope: "project" | "global",
     workspace?: string,
   ): Promise<InstallResult> {
+    if (scope === "project" && !workspace) {
+      return { success: false, slug: item.id, error: "No workspace directory for project-scope install" }
+    }
+
     if (!item.content) {
       return { success: false, slug: item.id, error: "Skill has no tarball URL" }
     }
@@ -124,22 +188,18 @@ export class MarketplaceInstaller {
 
     const base = this.paths.skillsDir(scope, workspace)
     const dir = path.join(base, item.id)
-    if (!path.resolve(dir).startsWith(path.resolve(base))) {
+    if (!contains(base, dir)) {
       return { success: false, slug: item.id, error: "Invalid skill id" }
     }
 
-    try {
-      await fs.access(dir)
+    if (await exists(dir)) {
       return { success: false, slug: item.id, error: "Skill already installed. Uninstall it before installing again." }
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
     }
 
-    const stamp = Date.now()
-    const tarball = path.join(os.tmpdir(), `kilo-skill-${item.id}-${stamp}.tar.gz`)
     // Stage under `base` (not os.tmpdir()) so fs.rename() never crosses filesystems (EXDEV).
     await fs.mkdir(base, { recursive: true })
-    const staging = path.join(base, `.staging-${item.id}-${stamp}`)
+    const staging = await fs.mkdtemp(path.join(base, `.staging-${item.id}-`))
+    const tarball = path.join(os.tmpdir(), `kilo-skill-${item.id}-${randomUUID()}.tar.gz`)
 
     try {
       const response = await fetch(item.content)
@@ -149,14 +209,11 @@ export class MarketplaceInstaller {
 
       const buffer = Buffer.from(await response.arrayBuffer())
       await fs.writeFile(tarball, buffer)
-
-      await fs.mkdir(staging, { recursive: true })
       await exec("tar", ["-xzf", tarball, "--strip-components=1", "-C", staging])
 
       const escaped = await findEscapedPaths(staging)
       if (escaped.length > 0) {
         console.warn(`Skill archive ${item.id} contains escaped paths:`, escaped)
-        await fs.rm(staging, { recursive: true })
         return { success: false, slug: item.id, error: "Skill archive contains unsafe paths" }
       }
 
@@ -164,7 +221,6 @@ export class MarketplaceInstaller {
         await fs.access(path.join(staging, "SKILL.md"))
       } catch {
         console.warn(`Extracted skill ${item.id} missing SKILL.md, rolling back`)
-        await fs.rm(staging, { recursive: true })
         return { success: false, slug: item.id, error: "Extracted archive missing SKILL.md" }
       }
 
@@ -172,31 +228,47 @@ export class MarketplaceInstaller {
 
       return { success: true, slug: item.id, filePath: path.join(dir, "SKILL.md"), line: 1 }
     } catch (err) {
-      console.warn(`Failed to install skill ${item.id}:`, err)
-      try {
-        await fs.rm(staging, { recursive: true })
-      } catch {
-        console.warn(`Failed to clean up staging directory ${staging}`)
+      if (await exists(dir)) {
+        return {
+          success: false,
+          slug: item.id,
+          error: "Skill already installed. Uninstall it before installing again.",
+        }
       }
+      console.warn(`Failed to install skill ${item.id}:`, err)
       return { success: false, slug: item.id, error: String(err) }
     } finally {
-      try {
-        await fs.unlink(tarball)
-      } catch {
-        console.warn(`Failed to clean up temp file ${tarball}`)
-      }
+      await Promise.all([
+        fs.rm(staging, { recursive: true, force: true }).catch((err) => {
+          console.warn(`Failed to clean up staging directory ${staging}:`, err)
+        }),
+        fs.rm(tarball, { force: true }).catch((err) => {
+          console.warn(`Failed to clean up temp file ${tarball}:`, err)
+        }),
+      ])
     }
   }
 
   // ── Remove ──────────────────────────────────────────────────────────
 
-  async remove(item: MarketplaceItem, scope: "project" | "global", workspace?: string): Promise<RemoveResult> {
+  async remove(item: MarketplaceItemRef, scope: "project" | "global", workspace?: string): Promise<RemoveResult> {
+    if (scope === "project" && !workspace) {
+      return { success: false, slug: item.id, error: "No workspace directory for project-scope removal" }
+    }
     if (item.type === "skill") return this.removeSkill(item, scope, workspace)
     if (item.type === "mcp") return this.removeMcp(item, scope, workspace)
-    return this.removeMode(item, scope, workspace)
+    return this.removeAgent(item, scope, workspace)
   }
 
-  async removeMcp(item: McpMarketplaceItem, scope: "project" | "global", workspace?: string): Promise<RemoveResult> {
+  async removeMcp(
+    item: Pick<McpMarketplaceItem, "id">,
+    scope: "project" | "global",
+    workspace?: string,
+  ): Promise<RemoveResult> {
+    if (scope === "project" && !workspace) {
+      return { success: false, slug: item.id, error: "No workspace directory for project-scope removal" }
+    }
+
     const config = await this.readConfig(scope, workspace)
     if (!config.mcp?.[item.id]) {
       return { success: true, slug: item.id }
@@ -207,28 +279,21 @@ export class MarketplaceInstaller {
     return { success: true, slug: item.id }
   }
 
-  async removeMode(item: ModeMarketplaceItem, scope: "project" | "global", workspace?: string): Promise<RemoveResult> {
-    const config = await this.readConfig(scope, workspace)
-    if (!config.agent?.[item.id]) {
-      return { success: true, slug: item.id }
-    }
-    delete config.agent[item.id]
-    if (Object.keys(config.agent).length === 0) delete config.agent
-    await this.writeConfig(scope, workspace, config)
-    return { success: true, slug: item.id }
-  }
-
   async removeSkill(
-    item: SkillMarketplaceItem,
+    item: Pick<SkillMarketplaceItem, "id">,
     scope: "project" | "global",
     workspace?: string,
   ): Promise<RemoveResult> {
+    if (scope === "project" && !workspace) {
+      return { success: false, slug: item.id, error: "No workspace directory for project-scope removal" }
+    }
+
     if (!isSafeId(item.id)) {
       return { success: false, slug: item.id, error: "Invalid skill id" }
     }
     const base = this.paths.skillsDir(scope, workspace)
     const dir = path.join(base, item.id)
-    if (!path.resolve(dir).startsWith(path.resolve(base))) {
+    if (!contains(base, dir)) {
       return { success: false, slug: item.id, error: "Invalid skill id" }
     }
     try {
@@ -273,50 +338,66 @@ export class MarketplaceInstaller {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function isSafeId(id: string): boolean {
-  if (!id || id.includes("..") || id.includes("/") || id.includes("\\")) return false
-  return /^[\w\-@.]+$/.test(id)
+async function exists(filepath: string): Promise<boolean> {
+  try {
+    await fs.access(filepath)
+    return true
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return false
+    throw err
+  }
 }
 
-// Group name → opencode permission key mapping (mirrors ModesMigrator)
-const GROUP_PERMISSIONS: Record<string, string> = {
-  read: "read",
-  edit: "edit",
-  browser: "bash",
-  command: "bash",
-  mcp: "mcp",
+function contains(dir: string, filepath: string): boolean {
+  return path.resolve(filepath).startsWith(path.resolve(dir) + path.sep)
 }
-const ALL_PERMISSIONS = ["read", "edit", "bash", "mcp"]
 
-function convertModeToAgent(content: string): Record<string, unknown> {
-  const mode = yaml.parse(content) as Record<string, unknown>
-  const groups = (mode.groups ?? []) as Array<string | [string, Record<string, unknown>]>
+/**
+ * Normalize a marketplace MCP entry from the old Kilocode format to the CLI's expected format.
+ *
+ * Old format (from marketplace API):
+ *   { "command": "npx", "args": [...], "env": {...} }
+ *   { "type": "sse"|"streamable-http", "url": "...", "headers": {...} }
+ *
+ * New format (CLI Config.Mcp schema):
+ *   { "type": "local", "command": ["npx", ...], "environment": {...} }
+ *   { "type": "remote", "url": "...", "headers": {...} }
+ */
+function normalizeMcpEntry(raw: Record<string, unknown>): Record<string, unknown> {
+  // Already in new format
+  if (raw.type === "local" || raw.type === "remote") return raw
 
-  const permission: Record<string, unknown> = {}
-  const allowed = new Set<string>()
-  for (const group of groups) {
-    if (typeof group === "string") {
-      const key = GROUP_PERMISSIONS[group] ?? group
-      allowed.add(key)
-      permission[key] = "allow"
-    } else if (Array.isArray(group)) {
-      const [name, cfg] = group
-      const key = GROUP_PERMISSIONS[name] ?? name
-      allowed.add(key)
-      permission[key] = cfg?.fileRegex ? { [String(cfg.fileRegex)]: "allow", "*": "deny" } : "allow"
+  // Remote MCP (sse / streamable-http) → type: "remote"
+  if (typeof raw.url === "string") {
+    const { type: _type, url, headers, ...rest } = raw
+    const entry: Record<string, unknown> = { type: "remote", url }
+    if (headers && typeof headers === "object") entry.headers = headers
+    // Carry through any other recognized fields (enabled, timeout, oauth)
+    for (const key of ["enabled", "timeout", "oauth"] as const) {
+      if (key in rest) entry[key] = rest[key]
     }
-  }
-  for (const perm of ALL_PERMISSIONS) {
-    if (!allowed.has(perm)) permission[perm] = "deny"
+    return entry
   }
 
-  const prompt = [mode.roleDefinition, mode.customInstructions].filter(Boolean).join("\n\n")
-  return {
-    mode: "primary",
-    description: mode.description ?? mode.whenToUse ?? mode.name,
-    prompt,
-    permission,
+  // Local MCP (command string + args array) → type: "local", command array
+  if (typeof raw.command === "string") {
+    const args = (raw.args as string[] | undefined) ?? []
+    const env = raw.env
+    const entry: Record<string, unknown> = { type: "local", command: [raw.command, ...args] }
+    if (env && typeof env === "object" && Object.keys(env as object).length > 0) entry.environment = env
+    for (const key of ["enabled", "timeout"] as const) {
+      if (key in raw) entry[key] = raw[key]
+    }
+    return entry
   }
+
+  return raw
+}
+
+function isSafeId(id: string): boolean {
+  if (!id || id === "." || id.includes("..") || id.includes("/") || id.includes("\\") || id.endsWith(".")) return false
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(id)) return false
+  return /^[\w\-@.]+$/.test(id)
 }
 
 function escapeJsonValue(raw: string): string {

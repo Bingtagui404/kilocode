@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test"
-import { normalizeLocale, resolveTemplate } from "../../webview-ui/src/context/language-utils"
+import { localeToBcp47, normalizeLocale, resolveTemplate } from "../../webview-ui/src/context/language-utils"
 
 describe("normalizeLocale", () => {
   it("returns 'en' for English", () => {
@@ -15,8 +15,11 @@ describe("normalizeLocale", () => {
   })
 
   it("returns 'zht' for Traditional Chinese", () => {
+    expect(normalizeLocale("zht")).toBe("zht")
     expect(normalizeLocale("zh-Hant")).toBe("zht")
-    expect(normalizeLocale("zh-TW")).toBe("zh")
+    expect(normalizeLocale("zh-TW")).toBe("zht")
+    expect(normalizeLocale("zh-HK")).toBe("zht")
+    expect(normalizeLocale("zh-MO")).toBe("zht")
     expect(normalizeLocale("zh-hant-TW")).toBe("zht")
   })
 
@@ -28,6 +31,11 @@ describe("normalizeLocale", () => {
   it("returns 'ko' for Korean", () => {
     expect(normalizeLocale("ko")).toBe("ko")
     expect(normalizeLocale("ko-KR")).toBe("ko")
+  })
+
+  it("returns 'fa' for Persian", () => {
+    expect(normalizeLocale("fa")).toBe("fa")
+    expect(normalizeLocale("fa-IR")).toBe("fa")
   })
 
   it("returns 'no' for Norwegian Bokmål", () => {
@@ -54,6 +62,14 @@ describe("normalizeLocale", () => {
     expect(normalizeLocale("EN")).toBe("en")
     expect(normalizeLocale("DE")).toBe("de")
     expect(normalizeLocale("ZH-HANT")).toBe("zht")
+  })
+})
+
+describe("localeToBcp47", () => {
+  it("maps internal locale ids before passing them to Intl", () => {
+    expect(localeToBcp47("br")).toBe("pt-BR")
+    expect(localeToBcp47("zht")).toBe("zh-TW")
+    expect(new Intl.PluralRules(localeToBcp47("br")).select(2)).toBe("other")
   })
 })
 

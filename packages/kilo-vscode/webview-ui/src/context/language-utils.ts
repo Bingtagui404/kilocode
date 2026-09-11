@@ -15,6 +15,25 @@ export type Locale =
   | "br"
   | "th"
   | "bs"
+  | "tr"
+  | "nl"
+  | "uk"
+  | "it"
+  | "fa"
+
+/** Locales that use right-to-left script. */
+export const RTL_LOCALES = new Set<Locale>(["ar", "fa"])
+
+/** Map internal locale IDs to valid BCP 47 language tags for the HTML lang attribute. */
+export const LOCALE_BCP47: Partial<Record<Locale, string>> = {
+  br: "pt-BR",
+  zht: "zh-TW",
+}
+
+/** Return the BCP 47 language tag for a locale (falls back to the locale id itself). */
+export function localeToBcp47(locale: Locale): string {
+  return LOCALE_BCP47[locale] ?? locale
+}
 
 export const LOCALES: readonly Locale[] = [
   "en",
@@ -33,6 +52,11 @@ export const LOCALES: readonly Locale[] = [
   "br",
   "th",
   "bs",
+  "tr",
+  "nl",
+  "uk",
+  "it",
+  "fa",
 ]
 
 /**
@@ -42,7 +66,10 @@ export const LOCALES: readonly Locale[] = [
 export function normalizeLocale(lang: string): Locale {
   const lower = lang.toLowerCase()
   if (lower.startsWith("zh")) {
-    return lower.includes("hant") ? "zht" : "zh"
+    if (lower === "zht") return "zht"
+    const traditional =
+      lower.includes("hant") || lower.includes("-tw") || lower.includes("-hk") || lower.includes("-mo")
+    return traditional ? "zht" : "zh"
   }
   for (const loc of LOCALES) {
     if (lower.startsWith(loc)) {
@@ -51,6 +78,9 @@ export function normalizeLocale(lang: string): Locale {
   }
   if (lower.startsWith("nb") || lower.startsWith("nn")) {
     return "no"
+  }
+  if (lower.startsWith("nl")) {
+    return "nl"
   }
   if (lower.startsWith("pt")) {
     return "br"

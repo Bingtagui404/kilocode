@@ -36,7 +36,7 @@ const shellPart: ToolPart = {
       description: "Check for migration message types",
       command: `grep -n "migration\\|openMigration" packages/kilo-vscode/webview-ui/src/types/messages.ts`,
     },
-    output: `534:  view: "newTask" | "marketplace" | "history" | "cloudHistory" | "profile" | "settings" | "migration" // legacy-migration`,
+    output: `534:  view: "newTask" | "marketplace" | "history" | "profile" | "settings" | "migration" // legacy-migration`,
     title: "Check for migration message types",
     metadata: {},
     time: { start: now - 5000, end: now - 4500 },
@@ -51,7 +51,7 @@ const mockData = {
   part: { [MSG_ID]: [shellPart] },
   permission: {},
   question: {},
-  provider: { all: [], connected: false, default: {} },
+  provider: { all: new Map(), connected: [], default: {} },
 }
 
 const meta: Meta = {

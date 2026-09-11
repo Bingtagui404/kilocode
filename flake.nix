@@ -21,9 +21,14 @@
       devShells = forEachSystem (pkgs: {
         default =
           let
+            bun = pkgs.callPackage ./nix/bun.nix { };
+
             kilo-dev = pkgs.writeShellScriptBin "kilo-dev" ''
-              cd "$KILO_ROOT"
-              exec ${pkgs.bun}/bin/bun dev "$@"
+              set -euo pipefail
+
+              : "''${KILO_ROOT:?KILO_ROOT is not set. Enter the flake dev shell from the repo root.}"
+              export KILO_DEV_CWD="$PWD"
+              exec ${bun}/bin/bun --cwd "$KILO_ROOT/packages/opencode" --conditions=browser ./src/index.ts "$@"
             '';
 
             kilo-install-bin = pkgs.writeShellScriptBin "kilo-install" ''
@@ -150,28 +155,55 @@
             '';
           in
           pkgs.mkShell {
-            packages = with pkgs; [
-              bun
-              nodejs_20
-              pkg-config
-              openssl
-              git
-              gh
-              playwright-driver.browsers
-              vsce
-              unzip
-              gnutar
-              gzip
-              patchelf
-              ripgrep
-              kilo-dev
-              kilo-install-bin
-              kilo-bin
-            ];
+            packages =
+              with pkgs;
+              [
+                bun
+                nodejs_20
+                python3
+                pkg-config
+                openssl
+                git
+                gh
+                playwright-driver.browsers
+                vsce
+                unzip
+                gnutar
+                gzip
+                patchelf
+                ripgrep
+                jetbrains.jdk
+                jdk21
+                kilo-dev
+                kilo-install-bin
+                kilo-bin
+              ]
+              ++ lib.optionals stdenv.isLinux [
+                libX11
+                libXext
+                libXrender
+                libXtst
+                libXi
+                fontconfig
+                freetype
+              ];
             shellHook = ''
               export KILO_ROOT="$PWD"
               export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
               export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+            ''
+            + pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+              export LD_LIBRARY_PATH="${
+                pkgs.lib.makeLibraryPath [
+                  pkgs.libX11
+                  pkgs.libXext
+                  pkgs.libXrender
+                  pkgs.libXtst
+                  pkgs.libXi
+                  pkgs.fontconfig
+                  pkgs.freetype
+                ]
+              }:$LD_LIBRARY_PATH"
             '';
           };
       });
@@ -186,32 +218,26 @@
             opencode = final.callPackage ./nix/opencode.nix {
               inherit node_modules;
             };
-            desktop = final.callPackage ./nix/desktop.nix {
-              inherit opencode;
-            };
           in
           {
             inherit opencode;
-            opencode-desktop = desktop;
           };
       };
 
       packages = forEachSystem (
         pkgs:
         let
+          bun = pkgs.callPackage ./nix/bun.nix { };
           node_modules = pkgs.callPackage ./nix/node_modules.nix {
-            inherit rev;
+            inherit bun rev;
           };
           kilo = pkgs.callPackage ./nix/kilo.nix {
-            inherit node_modules;
-          };
-          desktop = pkgs.callPackage ./nix/desktop.nix {
-            inherit kilo;
+            inherit bun node_modules;
           };
         in
         {
           default = kilo;
-          inherit kilo desktop;
+          inherit kilo;
           # Updater derivation with fakeHash - build fails and reveals correct hash
           node_modules_updater = node_modules.override {
             hash = pkgs.lib.fakeHash;

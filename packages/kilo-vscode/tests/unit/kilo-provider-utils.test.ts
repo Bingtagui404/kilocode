@@ -7,29 +7,40 @@ import {
   mapSSEEventToWebviewMessage,
   isEventFromForeignProject,
   mapCloudSessionMessageToWebviewMessage,
+  MessageConfirmation,
+  getErrorMessage,
+  getConfigErrorDetails,
   type ProviderInfo,
 } from "../../src/kilo-provider-utils"
 import type { CloudSessionMessage } from "../../src/services/cli-backend/types"
+import type { SyncPayload } from "../../src/services/cli-backend/sdk-sse-adapter"
 import type {
   Session,
   Agent,
   Provider,
   Event,
-  EventMessagePartUpdated,
-  EventMessageUpdated,
   EventSessionStatus,
+  EventSessionTurnClose,
+  EventSessionError,
+  EventSandboxStatusChanged,
   EventPermissionAsked,
   EventPermissionReplied,
   EventTodoUpdated,
   EventQuestionAsked,
   EventQuestionReplied,
   EventQuestionRejected,
-  EventSessionCreated,
-  EventSessionUpdated,
+  EventSuggestionShown,
+  EventSuggestionAccepted,
+  EventSuggestionDismissed,
   EventServerConnected,
   TextPart,
   AssistantMessage,
 } from "@kilocode/sdk/v2/client"
+
+type SyncEventMessagePartUpdated = Extract<SyncPayload, { name: "message.part.updated.1" }>
+type SyncEventMessageUpdated = Extract<SyncPayload, { name: "message.updated.1" }>
+type SyncEventSessionCreated = Extract<SyncPayload, { name: "session.created.1" }>
+type SyncEventSessionUpdated = Extract<SyncPayload, { name: "session.updated.1" }>
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
@@ -93,6 +104,44 @@ function makeAssistantMessage(overrides: Partial<AssistantMessage> = {}): Assist
   }
 }
 
+describe("MessageConfirmation", () => {
+  it("reports tracked confirmed messages", async () => {
+    const state = new MessageConfirmation()
+    state.track("msg-1")
+    state.confirm("msg-1")
+
+    expect(state.has("msg-1")).toBe(true)
+    expect(await state.wait("msg-1", 1)).toBe(true)
+  })
+
+  it("resolves waiters when a message is confirmed", async () => {
+    const state = new MessageConfirmation()
+    state.track("msg-1")
+    const wait = state.wait("msg-1", 50)
+
+    state.confirm("msg-1")
+
+    expect(await wait).toBe(true)
+  })
+
+  it("returns false when confirmation does not arrive", async () => {
+    const state = new MessageConfirmation()
+    state.track("msg-1")
+
+    expect(await state.wait("msg-1", 1)).toBe(false)
+  })
+
+  it("forgets confirmations after release", () => {
+    const state = new MessageConfirmation()
+    const release = state.track("msg-1")
+    state.confirm("msg-1")
+
+    release()
+
+    expect(state.has("msg-1")).toBe(false)
+  })
+})
+
 describe("sessionToWebview", () => {
   it("converts epoch timestamps to ISO strings", () => {
     const result = sessionToWebview(makeSession())
@@ -110,6 +159,55 @@ describe("sessionToWebview", () => {
     const result = sessionToWebview(makeSession())
     expect(() => new Date(result.createdAt)).not.toThrow()
     expect(new Date(result.createdAt).getTime()).toBe(1700000000000)
+  })
+
+  it("clears optional state omitted from a full session snapshot", () => {
+    const result = sessionToWebview(makeSession())
+    expect(result.revert).toBeNull()
+    expect(result.summary).toBeNull()
+    expect(result.goal).toBeNull()
+  })
+
+  it.each([true, false])("projects the saved goal with active=%s", (active) => {
+    const goal = { text: "Fix the failing tests", active }
+    const result = sessionToWebview(makeSession({ metadata: { "kilo.goal": goal, unrelated: "private" } }))
+    expect(result.goal).toEqual(goal)
+    expect(result).not.toHaveProperty("metadata")
+  })
+
+  it("clears the saved goal through JSON serialization and a session merge", () => {
+    const saved = sessionToWebview(makeSession({ metadata: { "kilo.goal": { text: "Fix tests", active: true } } }))
+    const cleared = JSON.parse(JSON.stringify(sessionToWebview(makeSession({ metadata: {} }))))
+    expect({ ...saved, ...cleared }.goal).toBeNull()
+  })
+
+  it.each(["active", "complete", "blocked", "paused"] as const)(
+    "carries %s goal state and report through JSON",
+    (status) => {
+      const goal = {
+        text: "Fix tests",
+        status,
+        active: status === "active",
+        reason: "Reported by the working model, not independently verified.",
+      }
+      const result = sessionToWebview(makeSession({ metadata: { "kilo.goal": goal } }))
+      expect(JSON.parse(JSON.stringify(result)).goal).toEqual(goal)
+    },
+  )
+
+  it.each([null, "text", { text: 1, active: true }, { text: "Goal" }, { text: "Goal", active: "true" }])(
+    "ignores invalid goal metadata %j",
+    (goal) => {
+      expect(sessionToWebview(makeSession({ metadata: { "kilo.goal": goal } })).goal).toBeNull()
+    },
+  )
+
+  it("preserves the workspace restoration outcome from a revert response", () => {
+    const session = {
+      ...makeSession(),
+      revert: { messageID: "msg-1", workspace: "snapshots-disabled" as const },
+    }
+    expect(sessionToWebview(session).revert).toMatchObject({ workspace: "snapshots-disabled" })
   })
 })
 
@@ -198,11 +296,17 @@ describe("buildSettingPath", () => {
 })
 
 describe("mapSSEEventToWebviewMessage", () => {
-  it("maps message.part.updated to partUpdated", () => {
-    const event: EventMessagePartUpdated = {
-      type: "message.part.updated",
-      properties: {
+  it("maps message.part.updated.1 to partUpdated", () => {
+    const event: SyncEventMessagePartUpdated = {
+      type: "sync",
+      name: "message.part.updated.1",
+      id: "evt-part",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
         part: makeTextPart({ text: "hello" }),
+        time: 1700000000000,
       },
     }
     const msg = mapSSEEventToWebviewMessage(event, "sess-1")
@@ -213,18 +317,33 @@ describe("mapSSEEventToWebviewMessage", () => {
     }
   })
 
-  it("returns null for message.part.updated when sessionID is undefined", () => {
-    const event: EventMessagePartUpdated = {
-      type: "message.part.updated",
-      properties: { part: makeTextPart({ text: "" }) },
+  it("maps message.part.updated.1 without a tracked sessionID", () => {
+    const event: SyncEventMessagePartUpdated = {
+      type: "sync",
+      name: "message.part.updated.1",
+      id: "evt-part",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
+        part: makeTextPart({ text: "" }),
+        time: 1700000000000,
+      },
     }
-    expect(mapSSEEventToWebviewMessage(event, undefined)).toBeNull()
+    const msg = mapSSEEventToWebviewMessage(event, undefined)
+    expect(msg?.type).toBe("partUpdated")
+    if (msg?.type === "partUpdated") expect(msg.sessionID).toBe("sess-1")
   })
 
-  it("maps message.updated to messageCreated with ISO date", () => {
-    const event: EventMessageUpdated = {
-      type: "message.updated",
-      properties: {
+  it("maps message.updated.1 to messageCreated with ISO date", () => {
+    const event: SyncEventMessageUpdated = {
+      type: "sync",
+      name: "message.updated.1",
+      id: "evt-message",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: {
+        sessionID: "sess-1",
         info: makeAssistantMessage({ cost: 0.001 }),
       },
     }
@@ -263,6 +382,73 @@ describe("mapSSEEventToWebviewMessage", () => {
       expect(msg.message).toBe("trying again")
       expect(msg.next).toBe(5000)
     }
+  })
+
+  it("maps sandbox status changes to effective button state", () => {
+    const event: EventSandboxStatusChanged = {
+      type: "sandbox.status.changed",
+      properties: { sessionID: "sess-1", directory: "/tmp", enabled: true, available: true, version: 3 },
+    }
+
+    expect(mapSSEEventToWebviewMessage(event, "sess-1")).toEqual({
+      type: "sandboxStatus",
+      sessionID: "sess-1",
+      directory: "/tmp",
+      enabled: true,
+      available: true,
+      reason: undefined,
+      version: 3,
+    })
+  })
+
+  it("maps session.turn.close with its event identity and terminal reason", () => {
+    const event: EventSessionTurnClose = {
+      id: "evt-turn",
+      type: "session.turn.close",
+      properties: { sessionID: "sess-1", reason: "interrupted" },
+    }
+    const msg = mapSSEEventToWebviewMessage(event, "sess-1")
+    expect(msg).toEqual({ type: "sessionTurnClosed", sessionID: "sess-1", eventID: "evt-turn", reason: "interrupted" })
+  })
+
+  it("forwards the parent session ID when a child turn closes", () => {
+    const event: EventSessionTurnClose = {
+      id: "evt-child-turn",
+      type: "session.turn.close",
+      properties: { sessionID: "child", parentID: "parent", reason: "completed" },
+    }
+
+    expect(mapSSEEventToWebviewMessage(event, "child")).toEqual({
+      type: "sessionTurnClosed",
+      sessionID: "child",
+      eventID: "evt-child-turn",
+      reason: "completed",
+      parentID: "parent",
+    })
+  })
+
+  it("maps session errors with their event identity and message", () => {
+    const event: EventSessionError = {
+      id: "evt-error",
+      type: "session.error",
+      properties: {
+        sessionID: "sess-1",
+        error: {
+          name: "APIError",
+          data: {
+            message: "prompt_cache_breakpoint is not supported on this model",
+            isRetryable: false,
+          },
+        },
+      },
+    }
+
+    expect(mapSSEEventToWebviewMessage(event, "sess-1")).toEqual({
+      type: "sessionError",
+      eventID: "evt-error",
+      sessionID: "sess-1",
+      error: event.properties.error,
+    })
   })
 
   it("maps permission.asked to permissionRequest", () => {
@@ -363,11 +549,21 @@ describe("mapSSEEventToWebviewMessage", () => {
       properties: {
         id: "q1",
         sessionID: "sess-1",
-        questions: [],
+        questions: [
+          {
+            question: "Ready to implement?",
+            header: "Implement",
+            options: [{ label: "Implement", description: "Switch to code", mode: "code" }],
+          },
+        ],
       },
     }
     const msg = mapSSEEventToWebviewMessage(event, "sess-1")
     expect(msg?.type).toBe("questionRequest")
+    if (msg?.type === "questionRequest") {
+      const questions = msg.question.questions as Array<{ options?: Array<{ mode?: string }> }>
+      expect(questions[0]?.options?.[0]?.mode).toBe("code")
+    }
   })
 
   it("maps question.replied to questionResolved", () => {
@@ -394,10 +590,51 @@ describe("mapSSEEventToWebviewMessage", () => {
     }
   })
 
-  it("maps session.created to sessionCreated with ISO dates", () => {
-    const event: EventSessionCreated = {
-      type: "session.created",
-      properties: { info: makeSession() },
+  it("maps suggestion.shown to suggestionRequest", () => {
+    const event: EventSuggestionShown = {
+      type: "suggestion.shown",
+      properties: {
+        id: "sug-1",
+        sessionID: "sess-1",
+        text: "Run tests?",
+        actions: [{ label: "Run tests", prompt: "Run the test suite" }],
+      },
+    }
+    const msg = mapSSEEventToWebviewMessage(event, "sess-1")
+    expect(msg?.type).toBe("suggestionRequest")
+  })
+
+  it("maps suggestion.accepted to suggestionResolved", () => {
+    const event: EventSuggestionAccepted = {
+      type: "suggestion.accepted",
+      properties: {
+        sessionID: "sess-1",
+        requestID: "sug-1",
+        index: 0,
+        action: { label: "Run tests", prompt: "Run the test suite" },
+      },
+    }
+    const msg = mapSSEEventToWebviewMessage(event, "sess-1")
+    expect(msg?.type).toBe("suggestionResolved")
+  })
+
+  it("maps suggestion.dismissed to suggestionResolved", () => {
+    const event: EventSuggestionDismissed = {
+      type: "suggestion.dismissed",
+      properties: { sessionID: "sess-1", requestID: "sug-2" },
+    }
+    const msg = mapSSEEventToWebviewMessage(event, "sess-1")
+    expect(msg?.type).toBe("suggestionResolved")
+  })
+
+  it("maps session.created.1 to sessionCreated with ISO dates", () => {
+    const event: SyncEventSessionCreated = {
+      type: "sync",
+      name: "session.created.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: makeSession() },
     }
     const msg = mapSSEEventToWebviewMessage(event, "sess-1")
     expect(msg?.type).toBe("sessionCreated")
@@ -406,13 +643,16 @@ describe("mapSSEEventToWebviewMessage", () => {
     }
   })
 
-  it("maps session.updated to sessionUpdated with ISO dates", () => {
-    const event: EventSessionUpdated = {
-      type: "session.updated",
-      properties: { info: makeSession({ id: "sess-2" }) },
+  it("ignores session.updated.1 after backend state reconciliation", () => {
+    const event: SyncEventSessionUpdated = {
+      type: "sync",
+      name: "session.updated.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-2", info: { id: "sess-2", time: { updated: 1700001000000 } } },
     }
-    const msg = mapSSEEventToWebviewMessage(event, "sess-2")
-    expect(msg?.type).toBe("sessionUpdated")
+    expect(mapSSEEventToWebviewMessage(event, "sess-2")).toBeNull()
   })
 
   it("returns null for server.connected (no webview message)", () => {
@@ -427,37 +667,46 @@ describe("mapSSEEventToWebviewMessage", () => {
 })
 
 describe("isEventFromForeignProject", () => {
-  const session = (projectID: string) =>
-    ({
-      id: "s1",
-      projectID,
-      title: "test",
-      directory: "/workspace",
-      time: { created: 0, updated: 0 },
-    }) as unknown as Session
+  function created(projectID: string): SyncEventSessionCreated {
+    return {
+      type: "sync",
+      name: "session.created.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: makeSession({ projectID }) },
+    }
+  }
 
-  it("drops session.created from a different project", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(true)
+  function updated(projectID: string): SyncEventSessionUpdated {
+    return {
+      type: "sync",
+      name: "session.updated.1",
+      id: "evt-session",
+      seq: 1,
+      aggregateID: "sessionID",
+      data: { sessionID: "sess-1", info: { projectID } },
+    }
+  }
+
+  it("drops session.created.1 from a different project", () => {
+    expect(isEventFromForeignProject(created("project-B"), "project-A")).toBe(true)
   })
 
-  it("drops session.updated from a different project", () => {
-    const event: Event = { type: "session.updated", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(true)
+  it("drops session.updated.1 from a different project", () => {
+    expect(isEventFromForeignProject(updated("project-B"), "project-A")).toBe(true)
   })
 
-  it("keeps session.created from the same project", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-A") } }
-    expect(isEventFromForeignProject(event, "project-A")).toBe(false)
+  it("keeps session.created.1 from the same project", () => {
+    expect(isEventFromForeignProject(created("project-A"), "project-A")).toBe(false)
   })
 
   it("keeps all events when expectedProjectID is undefined", () => {
-    const event: Event = { type: "session.created", properties: { info: session("project-B") } }
-    expect(isEventFromForeignProject(event, undefined)).toBe(false)
+    expect(isEventFromForeignProject(created("project-B"), undefined)).toBe(false)
   })
 
   it("keeps non-session events regardless of project", () => {
-    const event = { type: "server.heartbeat", properties: {} } as unknown as Event
+    const event: EventServerConnected = { type: "server.connected", properties: {} }
     expect(isEventFromForeignProject(event, "project-A")).toBe(false)
   })
 })
@@ -511,5 +760,143 @@ describe("mapCloudSessionMessage", () => {
   it("maps user role correctly", () => {
     const msg = mapCloudSessionMessageToWebviewMessage(makeCloudMessage({ role: "user" }))
     expect(msg.role).toBe("user")
+  })
+})
+
+describe("getErrorMessage", () => {
+  it("extracts message from an Error instance", () => {
+    expect(getErrorMessage(new Error("boom"))).toBe("boom")
+  })
+
+  it("returns the string as-is", () => {
+    expect(getErrorMessage("plain text failure")).toBe("plain text failure")
+  })
+
+  it("reads a direct .message field", () => {
+    expect(getErrorMessage({ message: "bad input" })).toBe("bad input")
+  })
+
+  it("reads a direct .error string field", () => {
+    expect(getErrorMessage({ error: "nope" })).toBe("nope")
+  })
+
+  it("reads SDK throwOnError shape { error: { message } }", () => {
+    expect(getErrorMessage({ error: { message: "sdk said no" } })).toBe("sdk said no")
+  })
+
+  it("reads NotFoundError shape { data: { message } }", () => {
+    expect(getErrorMessage({ name: "NotFoundError", data: { message: "not found" } })).toBe("not found")
+  })
+
+  it("reads the first Zod issue message from ConfigInvalidError", () => {
+    const err = {
+      name: "ConfigInvalidError",
+      data: {
+        path: "/Users/me/.config/kilo/kilo.json",
+        issues: [
+          { code: "unrecognized_keys", keys: ["indexing"], path: [], message: 'Unrecognized key: "indexing"' },
+          { code: "invalid_type", path: ["timeout"], message: "Expected number" },
+        ],
+      },
+    }
+    expect(getErrorMessage(err)).toBe('Unrecognized key: "indexing"')
+  })
+
+  it("reads Hono validator shape { data: { error: [{ message }] } }", () => {
+    const err = { data: { error: [{ message: "required" }] }, success: false }
+    expect(getErrorMessage(err)).toBe("required")
+  })
+
+  it("reads Hono validator shape with string errors", () => {
+    expect(getErrorMessage({ data: { error: ["bad field"] } })).toBe("bad field")
+  })
+
+  it("reads BadRequestError shape { errors: [{ message }] }", () => {
+    expect(getErrorMessage({ errors: [{ message: "first error" }, { message: "second" }] })).toBe("first error")
+  })
+
+  it("reads BadRequestError shape with string errors", () => {
+    expect(getErrorMessage({ errors: ["boom"] })).toBe("boom")
+  })
+
+  it("falls back to JSON for unknown object shapes", () => {
+    expect(getErrorMessage({ weird: true, code: 42 })).toBe('{"weird":true,"code":42}')
+  })
+
+  it("falls back to String() for non-serializable values", () => {
+    expect(getErrorMessage(undefined)).toBe("undefined")
+    expect(getErrorMessage(null)).toBe("null")
+    expect(getErrorMessage(42)).toBe("42")
+  })
+
+  it("skips JSON fallback for empty objects", () => {
+    expect(getErrorMessage({})).toBe("[object Object]")
+  })
+
+  it("prefers .message over nested shapes", () => {
+    const err = { message: "outer", data: { issues: [{ message: "inner" }] } }
+    expect(getErrorMessage(err)).toBe("outer")
+  })
+
+  it("falls through when the first issue has no message", () => {
+    // firstMessage only inspects index 0, so an invalid first entry causes the
+    // branch to skip and the JSON fallback kicks in.
+    const err = { data: { issues: [{ code: "bad" }] } }
+    expect(getErrorMessage(err)).toBe('{"data":{"issues":[{"code":"bad"}]}}')
+  })
+})
+
+describe("getConfigErrorDetails", () => {
+  it("returns undefined for non-object errors", () => {
+    expect(getConfigErrorDetails("oops")).toBeUndefined()
+    expect(getConfigErrorDetails(undefined)).toBeUndefined()
+    expect(getConfigErrorDetails(null)).toBeUndefined()
+    expect(getConfigErrorDetails(42)).toBeUndefined()
+  })
+
+  it("returns undefined when .data is missing", () => {
+    expect(getConfigErrorDetails({ message: "hi" })).toBeUndefined()
+  })
+
+  it("returns undefined when .data has no path or issues", () => {
+    expect(getConfigErrorDetails({ data: { unrelated: true } })).toBeUndefined()
+  })
+
+  it("formats a single-issue ConfigInvalidError", () => {
+    const err = {
+      data: {
+        path: "/home/me/.config/kilo/kilo.json",
+        issues: [{ code: "unrecognized_keys", keys: ["indexing"], path: [], message: 'Unrecognized key: "indexing"' }],
+      },
+    }
+    expect(getConfigErrorDetails(err)).toBe('File: /home/me/.config/kilo/kilo.json\n\n✖ Unrecognized key: "indexing"')
+  })
+
+  it("formats a multi-issue ConfigInvalidError with paths (including array indices)", () => {
+    const err = {
+      data: {
+        path: "/cfg.json",
+        issues: [
+          { path: ["timeout"], message: "Expected number" },
+          { path: ["agents", 0, "name"], message: "Required" },
+        ],
+      },
+    }
+    expect(getConfigErrorDetails(err)).toBe(
+      "File: /cfg.json\n\n✖ Expected number\n  → at timeout\n✖ Required\n  → at agents[0].name",
+    )
+  })
+
+  it("omits the path line when only issues are present", () => {
+    const err = { data: { issues: [{ path: [], message: "something" }] } }
+    expect(getConfigErrorDetails(err)).toBe("✖ something")
+  })
+
+  it("omits the issues section when only the path is present", () => {
+    expect(getConfigErrorDetails({ data: { path: "/cfg.json" } })).toBe("File: /cfg.json")
+  })
+
+  it("returns undefined when issues array is empty and no path", () => {
+    expect(getConfigErrorDetails({ data: { issues: [] } })).toBeUndefined()
   })
 })

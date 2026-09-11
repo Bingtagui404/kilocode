@@ -1,5 +1,6 @@
 ---
-title: Fireworks AI with Kilo Code
+title: "Using Fireworks AI with Kilo Code | Fast Inference"
+description: "Run open-source and proprietary models on Fireworks AI's high-performance platform in Kilo Code. Setup guide for VS Code and the CLI."
 ---
 
 # Using Fireworks AI With Kilo Code
@@ -17,13 +18,49 @@ Fireworks AI is a high-performance platform for running AI models that offers fa
 
 ## Configuration in Kilo Code
 
-1. **Open Kilo Code Settings:** Click the gear icon ({% codicon name="gear" /%}) in the Kilo Code panel.
-2. **Select Provider:** Choose "Fireworks AI" from the "API Provider" dropdown.
-3. **Enter API Key:** Paste your Fireworks AI API key into the "Fireworks AI API Key" field.
-4. **Select Model:** Choose your desired model from the "Model" dropdown.
+{% tabs %}
+{% tab label="VSCode" %}
+
+Open **Settings** (gear icon) and go to the **Providers** tab to add Fireworks AI and enter your API key.
+
+The extension stores this in your `kilo.json` config file. You can also edit the config file directly — see the **CLI** tab for the file format.
+
+{% /tab %}
+{% tab label="CLI" %}
+
+Set the API key as an environment variable or configure it in your `kilo.json` config file:
+
+**Environment variable:**
+
+```bash
+export FIREWORKS_API_KEY="your-api-key"
+```
+
+**Config file** (`~/.config/kilo/kilo.json` or `./kilo.json`):
+
+```jsonc
+{
+  "provider": {
+    "fireworks-ai": {
+      "env": ["FIREWORKS_API_KEY"],
+    },
+  },
+}
+```
+
+Then set your default model:
+
+```jsonc
+{
+  "model": "fireworks-ai/accounts/fireworks/models/llama4-scout-instruct-basic",
+}
+```
+
+{% /tab %}
+{% /tabs %}
 
 ## Tips and Notes
 
 - **Performance:** Fireworks AI is optimized for speed and offers excellent performance for both chat and completion tasks.
-- **Pricing:** Refer to the [Fireworks AI Pricing](https://fireworks.ai/pricing) page for current pricing information.
+- **Pricing:** Refer to the [Fireworks AI Pricing](https://docs.fireworks.ai/serverless/pricing) page for current pricing information.
 - **Rate Limits:** Fireworks AI has usage-based rate limits. Monitor your usage in the dashboard and consider upgrading your plan if needed.

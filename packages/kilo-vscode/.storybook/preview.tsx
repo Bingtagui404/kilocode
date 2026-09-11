@@ -71,7 +71,8 @@ const preview: Preview = {
           { value: "dark-modern", title: "Dark Modern (default)" },
           { value: "dark-plus", title: "Dark+" },
           { value: "light-modern", title: "Light Modern" },
-          { value: "hc-black", title: "High Contrast" },
+          { value: "hc-black", title: "High Contrast Dark" },
+          { value: "hc-light", title: "High Contrast Light" },
         ],
         dynamicTitle: true,
       },
@@ -81,6 +82,7 @@ const preview: Preview = {
     theme: "kilo-vscode",
     colorScheme: "dark",
     vscodeTheme: "dark-modern",
+    a11y: { manual: true },
   },
 }
 

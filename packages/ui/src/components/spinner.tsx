@@ -1,4 +1,5 @@
 import { ComponentProps, For } from "solid-js"
+import { observe } from "../kilocode/spinner" // kilocode_change
 
 const outerIndices = new Set([1, 2, 4, 7, 8, 11, 13, 14])
 const cornerIndices = new Set([0, 3, 12, 15])
@@ -19,11 +20,12 @@ export function Spinner(props: {
 }) {
   return (
     <svg
+      ref={observe /* kilocode_change */}
       {...props}
       viewBox="0 0 15 15"
       data-component="spinner"
       classList={{
-        ...(props.classList ?? {}),
+        ...props.classList,
         [props.class ?? ""]: !!props.class,
       }}
       fill="currentColor"
@@ -37,10 +39,11 @@ export function Spinner(props: {
             height="3"
             rx="1"
             style={{
-              opacity: square.corner ? 0 : undefined,
+              opacity: square.corner ? 0 : square.outer ? 0.15 : 0.4, // kilocode_change
               animation: square.corner
                 ? undefined
                 : `${square.outer ? "pulse-opacity-dim" : "pulse-opacity"} ${square.duration}s ease-in-out infinite`,
+              "animation-fill-mode": square.corner ? undefined : "both",
               "animation-delay": square.corner ? undefined : `${square.delay}s`,
             }}
           />

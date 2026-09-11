@@ -1,4 +1,4 @@
-# opencode agent guidelines
+# Kilo CLI package guidelines
 
 ## Build/Test
 
@@ -33,6 +33,8 @@ const state = Instance.state(async () => {
 // later: (await state()).someValue
 ```
 
+**Service-closure state vs. directory state** -- A value created in a service-layer closure, outside `InstanceState`, is shared by that service instance rather than keyed by request directory. The shared VS Code session paths use one active Snapshot service for the sidebar, Kilo tabs, and Agent Manager local worktree requests, so Snapshot `trackState` and its slow-track `asked` guard span those directories. Choosing **Continue with snapshots** resets the guard only when continued tracking returns a snapshot hash.
+
 **`fn(schema, callback)`** -- Wraps functions with Zod input validation. Used for most exported functions:
 
 ```ts
@@ -49,6 +51,12 @@ export const get = fn(z.object({ id: z.string() }), async (input) => { ... })
 
 **Logging** -- Use `Log.create({ service: "name" })` pattern.
 
+## Process Spawning (Windows)
+
+On Windows, any `spawn`/`execFile` call without `windowsHide: true` will flash a cmd.exe console window at the user. Use `Process.spawn` from `src/util/process.ts` — it enforces `windowsHide: true` automatically. For `Bun.spawn`/`Bun.spawnSync`, pass `windowsHide` via the options object if the subprocess could create a visible console.
+
+The MCP `StdioClientTransport` (third-party SDK) is handled separately via a process shim in `src/mcp/index.ts` that sets `process.type = "browser"` when running inside the VS Code extension (`KILO_PLATFORM=vscode`), which causes the SDK's internal `isElectron()` check to return `true` and enable `windowsHide`.
+
 ## Storage
 
 Filesystem-based JSON, not a database. Data lives in `~/.local/share/kilo/storage/`. Keys are path arrays: `Storage.write(["session", projectID, sessionID], data)`.
@@ -64,3 +72,7 @@ Hono-based HTTP server with OpenAPI spec generation. SSE for real-time events. W
 ## Providers and Models
 
 Uses the **Vercel AI SDK** as the abstraction layer. Providers are loaded from a bundled map or dynamically installed at runtime. Models come from models.dev (external API), cached locally.
+
+## Fork Isolation Rule
+
+`opencode/` is a fork of upstream opencode. When a change must touch a shared upstream file, extract the Kilo-specific logic into a mirror file under `src/kilocode/<same/path>.ts` (tests under `test/kilocode/<same/path>.test.ts`) and call into it from the upstream file behind a single `kilocode_change` marker. Example: a Kilo override for `src/cli/cmd/tui/component/dialog-provider.tsx` lives at `src/kilocode/cli/cmd/tui/component/dialog-provider.tsx`. Avoid inlining Kilo-specific logic directly into shared upstream files. Files and directories whose path contains `kilocode` never need `kilocode_change` markers.

@@ -39,6 +39,37 @@ const AM_PREFIX = "kilo-code.new.agentManager."
 /** Global commands whose keybindings are forwarded to the webview. */
 const GLOBAL_KEYBINDINGS: Record<string, string> = {
   "kilo-code.new.agentManagerOpen": "agentManagerOpen",
+  "kilo-code.new.cycleAgentMode": "cycleAgentMode",
+  "kilo-code.new.cyclePreviousAgentMode": "cyclePreviousAgentMode",
+}
+
+function addBinding(bindings: Record<string, string>, name: string, value: string, when?: string): void {
+  if (name === "newTerminalTab" && when?.includes("!kilo-code.new.agentManagerSideTerminalFocused")) {
+    bindings.newTerminalCenter = value
+    return
+  }
+  if (name === "newSideTerminal" && when?.includes("agentManagerSideTerminalFocused")) {
+    bindings.newTerminalTerminal = value
+    return
+  }
+  if (name === "newTerminal" || name === "newTerminalTab" || name === "newSideTerminal") return
+  bindings[name] = value
+}
+
+function addRawBinding(
+  bindings: Record<string, string>,
+  kb: { command: string; key?: string; mac?: string; when?: string },
+  mac: boolean,
+): void {
+  const raw = mac ? (kb.mac ?? kb.key) : kb.key
+  if (!raw) return
+  const value = formatKeybinding(raw, mac)
+  if (kb.command.startsWith(AM_PREFIX)) {
+    addBinding(bindings, kb.command.slice(AM_PREFIX.length), value, kb.when)
+    return
+  }
+  const name = GLOBAL_KEYBINDINGS[kb.command]
+  if (name) bindings[name] = value
 }
 
 /**
@@ -46,26 +77,27 @@ const GLOBAL_KEYBINDINGS: Record<string, string> = {
  * Returns a record of action name → formatted shortcut string.
  */
 export function buildKeybindingMap(
-  keybindings: Array<{ command: string; key?: string; mac?: string }>,
+  keybindings: Array<{ command: string; key?: string; mac?: string; when?: string }>,
   mac: boolean,
 ): Record<string, string> {
   const bindings: Record<string, string> = {}
 
   for (const kb of keybindings) {
-    const raw = mac ? (kb.mac ?? kb.key) : kb.key
-    if (!raw) continue
-
-    if (kb.command.startsWith(AM_PREFIX)) {
-      bindings[kb.command.slice(AM_PREFIX.length)] = formatKeybinding(raw, mac)
-    } else if (GLOBAL_KEYBINDINGS[kb.command]) {
-      bindings[GLOBAL_KEYBINDINGS[kb.command]] = formatKeybinding(raw, mac)
-    }
+    addRawBinding(bindings, kb, mac)
   }
 
   // Ensure fallback bindings are always present (may be missing from
   // cached packageJSON if the extension hasn't been fully reloaded)
+  if (!bindings.search) bindings.search = formatKeybinding(mac ? "cmd+f" : "ctrl+f", mac)
+  if (!bindings.runScript) bindings.runScript = formatKeybinding(mac ? "cmd+e" : "ctrl+e", mac)
   if (!bindings.toggleDiff) bindings.toggleDiff = formatKeybinding(mac ? "cmd+d" : "ctrl+d", mac)
   if (!bindings.showShortcuts) bindings.showShortcuts = formatKeybinding(mac ? "cmd+shift+/" : "ctrl+shift+/", mac)
+  if (!bindings.previousTerminal)
+    bindings.previousTerminal = formatKeybinding(mac ? "cmd+shift+[" : "ctrl+shift+[", mac)
+  if (!bindings.nextTerminal) bindings.nextTerminal = formatKeybinding(mac ? "cmd+shift+]" : "ctrl+shift+]", mac)
+  if (!bindings.newTerminalCenter)
+    bindings.newTerminalCenter = formatKeybinding(mac ? "cmd+shift+t" : "ctrl+shift+t", mac)
+  if (!bindings.newTerminalTerminal) bindings.newTerminalTerminal = formatKeybinding(mac ? "cmd+t" : "ctrl+t", mac)
 
   return bindings
 }

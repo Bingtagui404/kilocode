@@ -21,12 +21,12 @@ Connect your GitHub account via the [Integrations page](/docs/automate/integrati
 
 The GitHub App requests the following permissions:
 
-| Permission          | Access       | Purpose                          |
-| ------------------- | ------------ | -------------------------------- |
-| Pull requests       | Read & Write | Post review comments             |
-| Repository contents | Read         | Analyze code                     |
-| Issues              | Read & Write | Post summary comments, reactions |
-| Metadata            | Read         | List repositories                |
+| Permission | Access | Purpose |
+|---|---|---|
+| Pull requests | Read & Write | Post review comments |
+| Repository contents | Read | Analyze code |
+| Issues | Read & Write | Post summary comments, reactions |
+| Metadata | Read | List repositories |
 
 ### Step 2: Configure the Review Agent
 
@@ -39,22 +39,21 @@ The GitHub App requests the following permissions:
    - **Review Style** — Strict, Balanced, or Lenient
    - **Repository Selection** — All repositories or select specific ones
    - **Focus Areas** — Security, performance, bugs, style, testing, documentation
-   - **Max Review Time** — 5 to 30 minutes
-   - **Custom Instructions** — Add team-specific review guidelines
+   - **Use REVIEW.md** — Load repository-specific review guidance, including sub-agent usage, from the base branch
 4. Click **Save Configuration**
 
 ### Step 3: Open a Pull Request
 
 Once configured, the Review Agent automatically runs when:
 
-| PR Event                 | Triggers Review |
-| ------------------------ | --------------- |
-| PR opened                | ✅ Yes          |
-| New commits pushed to PR | ✅ Yes          |
-| PR reopened              | ✅ Yes          |
-| Draft PR marked ready    | ✅ Yes          |
-| Draft PR opened          | ❌ Skipped      |
-| PR closed                | ❌ No           |
+| PR Event | Triggers Review |
+|---|---|
+| PR opened | ✅ Yes |
+| New commits pushed to PR | ✅ Yes |
+| PR reopened | ✅ Yes |
+| Draft PR marked ready | ✅ Yes |
+| Draft PR opened | ❌ Skipped |
+| PR closed | ❌ No |
 
 ## What to Expect
 
@@ -93,7 +92,7 @@ The repository list is synced from GitHub and can be refreshed from the configur
 
 - Check the Code Reviews page for error details on specific reviews
 - Ensure you have sufficient Kilo Code credits
-- Very large PRs may time out — try increasing the max review time
+- Very large PRs may time out — consider splitting the change into smaller PRs
 
 ### The GitHub App is missing permissions
 

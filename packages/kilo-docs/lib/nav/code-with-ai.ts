@@ -5,16 +5,56 @@ export const CodeWithAiNav: NavSection[] = [
     title: "Platforms",
     links: [
       { href: "/code-with-ai", children: "Overview" },
-      { href: "/code-with-ai/platforms/vscode", children: "VS Code Extension" },
+      {
+        href: "/code-with-ai/platforms/vscode",
+        children: "VS Code Extension",
+        subLinks: [{ href: "/code-with-ai/platforms/vscode/whats-new", children: "What's New" }],
+      },
       {
         href: "/code-with-ai/platforms/jetbrains",
         children: "JetBrains Extension",
       },
-      { href: "/code-with-ai/platforms/cli", children: "CLI" },
+      {
+        href: "/code-with-ai/platforms/cli",
+        children: "CLI",
+        subLinks: [{ href: "/code-with-ai/platforms/cli-reference", children: "Command Reference" }],
+      },
+      {
+        href: "/code-with-ai/platforms/kilo-connect",
+        children: "Kilo Connect",
+        subLinks: [
+          { href: "/code-with-ai/platforms/slack", children: "Slack" },
+          { href: "/code-with-ai/platforms/github", children: "GitHub" },
+          { href: "/code-with-ai/platforms/linear", children: "Linear" },
+        ],
+      },
       { href: "/code-with-ai/platforms/cloud-agent", children: "Cloud Agent" },
       { href: "/code-with-ai/platforms/mobile", children: "Mobile Apps" },
-      { href: "/code-with-ai/platforms/slack", children: "Slack" },
+    ],
+  },
+  {
+    title: "Features",
+    links: [
       { href: "/code-with-ai/app-builder", children: "App Builder" },
+      {
+        href: "/code-with-ai/gastown",
+        children: "Gas Town by Kilo",
+        subLinks: [
+          { href: "/code-with-ai/gastown/quick-start", children: "Quick Start" },
+          { href: "/code-with-ai/gastown/concepts", children: "Concepts" },
+          { href: "/code-with-ai/gastown/mayor", children: "The Mayor" },
+          { href: "/code-with-ai/gastown/sling-work", children: "Sling Work" },
+          { href: "/code-with-ai/gastown/code-review", children: "Code Review" },
+          { href: "/code-with-ai/gastown/settings", children: "Settings" },
+          { href: "/code-with-ai/gastown/troubleshooting", children: "Troubleshooting" },
+          { href: "/code-with-ai/gastown/wasteland", children: "Wasteland" },
+          { href: "/code-with-ai/gastown/wasteland/quick-start", children: "Wasteland: Quick Start" },
+          { href: "/code-with-ai/gastown/wasteland/concepts", children: "Wasteland: Concepts" },
+          { href: "/code-with-ai/gastown/wasteland/workflow", children: "Wasteland: Workflow" },
+          { href: "/code-with-ai/gastown/wasteland/admin", children: "Wasteland: Administration" },
+          { href: "/code-with-ai/gastown/wasteland/settings", children: "Wasteland: Settings" },
+        ],
+      },
     ],
   },
   {
@@ -23,6 +63,10 @@ export const CodeWithAiNav: NavSection[] = [
       {
         href: "/code-with-ai/agents/chat-interface",
         children: "Chat Interface",
+      },
+      {
+        href: "/code-with-ai/agents/session-history",
+        children: "Session History and Search",
       },
       {
         href: "/code-with-ai/agents/context-mentions",
@@ -37,19 +81,23 @@ export const CodeWithAiNav: NavSection[] = [
         children: "Auto Model",
       },
       {
-        href: "/code-with-ai/agents/free-and-budget-models",
-        children: "Free & Budget Models",
+        href: "/code-with-ai/agents/custom-models",
+        children: "Custom Models",
+        platform: "new",
       },
       {
-        href: "/code-with-ai/agents/using-modes",
-        children: "Modes",
+        href: "/code-with-ai/agents/using-agents",
+        children: "Agents",
         subLinks: [
-          { href: "/code-with-ai/agents/using-modes", children: "Using Modes" },
           {
             href: "/code-with-ai/agents/orchestrator-mode",
             children: "Orchestrator Mode",
           },
         ],
+      },
+      {
+        href: "/code-with-ai/agents/goals",
+        children: "Session Goals",
       },
     ],
   },
@@ -71,17 +119,14 @@ export const CodeWithAiNav: NavSection[] = [
         children: "Git Commit Generation",
       },
       { href: "/code-with-ai/features/speech-to-text", children: "Voice Transcription" },
+      { href: "/code-with-ai/features/message-feedback", children: "Message Feedback" },
       {
         href: "/code-with-ai/features/browser-use",
         children: "Agent Behavior",
         subLinks: [
-          { href: "/code-with-ai/features/browser-use", children: "Browser Use" },
-          { href: "/code-with-ai/features/fast-edits", children: "Fast Edits" },
-          {
-            href: "/code-with-ai/features/task-todo-list",
-            children: "Task Todo List",
-          },
+          { href: "/code-with-ai/features/task-todo-list", children: "Task Todo List" },
           { href: "/code-with-ai/features/checkpoints", children: "Checkpoints" },
+          { href: "/code-with-ai/features/file-encoding", children: "File Encoding" },
         ],
       },
     ],

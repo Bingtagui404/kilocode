@@ -1,8 +1,7 @@
 /** @jsxImportSource solid-js */
 import type { Meta, StoryObj } from "storybook-solidjs-vite"
-import { Message, AssistantMessageDisplay, UserMessageDisplay } from "@opencode-ai/ui/message-part"
-// Side-effect import: registers kilo-ui's PART_MAPPING override for reasoning blocks
-import "../components/message-part"
+import { UserMessageDisplay, AssistantParts } from "../components/message-part"
+import { AgentAvatarPalette } from "../components/agent-avatar"
 import { DataProvider } from "@opencode-ai/ui/context/data"
 import { DiffComponentProvider } from "@kilocode/kilo-ui/context/diff"
 import { CodeComponentProvider } from "@kilocode/kilo-ui/context/code"
@@ -59,6 +58,8 @@ const userTextPart: TextPart = {
   text: "Can you review my code and suggest improvements?",
 }
 
+// --- Context group tools (read/glob/grep/list) → grouped header path ---
+
 const completedToolPart: ToolPart = {
   id: "part-tool-001",
   sessionID: SESSION_ID,
@@ -76,17 +77,73 @@ const completedToolPart: ToolPart = {
   },
 }
 
-const runningToolPart: ToolPart = {
-  id: "part-tool-002",
+const grepCompleted: ToolPart = {
+  id: "part-grep-001",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-grep-001",
+  tool: "grep",
+  state: {
+    status: "completed",
+    input: { pattern: "createSignal", path: "src/" },
+    output:
+      "src/counter.tsx:1: import { createSignal } from 'solid-js'\nsrc/app.tsx:3: const [count, setCount] = createSignal(0)",
+    title: "Search",
+    metadata: {},
+    time: { start: now - 7800, end: now - 7400 },
+  },
+}
+
+const globCompleted: ToolPart = {
+  id: "part-glob-001",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-glob-001",
+  tool: "glob",
+  state: {
+    status: "completed",
+    input: { pattern: "src/**/*.tsx", path: "." },
+    output: "src/counter.tsx\nsrc/app.tsx\nsrc/index.tsx",
+    title: "Found 3 files",
+    metadata: {},
+    time: { start: now - 7600, end: now - 7300 },
+  },
+}
+
+// --- Bash tool → ShellRollingResults path ---
+
+const bashCompleted: ToolPart = {
+  id: "part-bash-001",
   sessionID: SESSION_ID,
   messageID: ASST_MSG_ID,
   type: "tool",
   callID: "call-bash-001",
   tool: "bash",
   state: {
-    status: "running",
+    status: "completed",
     input: { description: "Run tests", command: "bun test" },
-    title: "Running tests...",
+    output:
+      "bun test v1.0.0\n\n✓ counter.test.tsx > renders correctly (2ms)\n✓ counter.test.tsx > increments count (1ms)\n\n2 tests passed [34ms]",
+    title: "Run tests",
+    metadata: {},
+    time: { start: now - 5000, end: now - 4500 },
+  },
+}
+
+// --- Edit tool → normal Part/ToolPartDisplay path (non-bash, non-context-group) ---
+
+const runningToolPart: ToolPart = {
+  id: "part-tool-002",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-edit-001",
+  tool: "edit",
+  state: {
+    status: "running",
+    input: { filePath: "src/counter.tsx" },
     metadata: {},
     time: { start: now - 3000 },
   },
@@ -97,42 +154,192 @@ const errorToolPart: ToolPart = {
   sessionID: SESSION_ID,
   messageID: ASST_MSG_ID,
   type: "tool",
-  callID: "call-bash-002",
-  tool: "bash",
+  callID: "call-edit-002",
+  tool: "edit",
   state: {
     status: "error",
-    input: { description: "Build project", command: "bun build" },
-    error: "Build failed: Module not found 'missing-dep'",
-    metadata: {},
+    input: { filePath: "src/missing-file.tsx" },
+    error: "ENOENT: no such file or directory 'src/missing-file.tsx'",
     time: { start: now - 6000, end: now - 5500 },
   },
 }
+
+// Completed edit tool with full filediff metadata — exercises canOpenDiff()
+// so the "Open in Diff Viewer" icon button renders in the trigger.
+const editCompletedPart: ToolPart = {
+  id: "part-tool-edit-done",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-edit-done",
+  tool: "edit",
+  state: {
+    status: "completed",
+    input: {
+      filePath: "src/counter.tsx",
+      oldString: "const [count, setCount] = createSignal(0)",
+      newString: "const [count, setCount] = createSignal(1)",
+    },
+    output: "File edited successfully",
+    title: "Edit file",
+    metadata: {
+      filediff: {
+        file: "src/counter.tsx",
+        before:
+          "import { createSignal } from 'solid-js'\n\nexport function Counter() {\n  const [count, setCount] = createSignal(0)\n  return <button onClick={() => setCount(count() + 1)}>{count()}</button>\n}\n",
+        after:
+          "import { createSignal } from 'solid-js'\n\nexport function Counter() {\n  const [count, setCount] = createSignal(1)\n  return <button onClick={() => setCount(count() + 1)}>{count()}</button>\n}\n",
+        additions: 1,
+        deletions: 1,
+      },
+    },
+    time: { start: now - 4000, end: now - 3500 },
+  },
+}
+
+// Completed write tool that creates a new file — exercises canOpenDiff() via
+// `props.input.content` so the "Open in Diff Viewer" icon button renders even
+// when metadata.filediff has no diff payload.
+const writeCompletedPart: ToolPart = {
+  id: "part-tool-write-done",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-write-done",
+  tool: "write",
+  state: {
+    status: "completed",
+    input: {
+      filePath: "src/greet.ts",
+      content: "export function greet(name: string) {\n  return `Hello, ${name}!`\n}\n",
+    },
+    output: "File written successfully",
+    title: "Write file",
+    metadata: {
+      filediff: {
+        file: "src/greet.ts",
+        additions: 3,
+        deletions: 0,
+      },
+    },
+    time: { start: now - 4000, end: now - 3500 },
+  },
+}
+
+// --- Reasoning part ---
 
 const reasoningPart: ReasoningPart = {
   id: "part-reasoning-001",
   sessionID: SESSION_ID,
   messageID: ASST_MSG_ID,
   type: "reasoning",
-  text: "Let me think about this carefully. The user wants code improvements.\n\n1. First, I should check for error boundaries — they prevent cascading failures\n2. The dependencies could be updated to newer minor versions\n3. Unit tests would improve confidence in refactoring later\n\nI'll structure my response to address each point clearly.",
+  text: "**Reviewing code improvements**\n\nLet me think about this carefully. The user wants code improvements.\n\n1. First, I should check for error boundaries - they prevent cascading failures\n2. The dependencies could be updated to newer minor versions\n3. Unit tests would improve confidence in refactoring later\n\nI'll structure my response to address each point clearly.",
   time: { start: now - 9000, end: now - 8500 },
 }
 
-const mockData = {
-  session: [],
-  session_status: {},
-  session_diff: {},
-  message: {
-    [SESSION_ID]: [mockUserMessage, mockAssistantMessage],
-  },
-  part: {
-    [USER_MSG_ID]: [userTextPart],
-    [ASST_MSG_ID]: [textPart, completedToolPart],
+// ---------------------------------------------------------------------------
+// Mock data factory — static constants avoid re-creating arrays on every
+// reactive access, which would cause SolidJS to see constant "changes".
+// ---------------------------------------------------------------------------
+
+function createMockData(parts: (TextPart | ToolPart | ReasoningPart)[]) {
+  return {
+    session: [],
+    session_status: {},
+    session_diff: {},
+    message: {
+      [SESSION_ID]: [mockUserMessage, mockAssistantMessage],
+    },
+    part: {
+      [USER_MSG_ID]: [userTextPart],
+      [ASST_MSG_ID]: parts,
+    },
+  }
+}
+
+type MockData = ReturnType<typeof createMockData>
+
+// AssistantMessage + text + completed read (context group grouped header)
+const mockData = createMockData([completedToolPart, textPart])
+// Only the running edit tool — matches old WithRunningTool single-part intent
+const mockDataRunning = createMockData([runningToolPart])
+// Only the error edit tool — matches old WithErrorTool single-part intent
+const mockDataError = createMockData([errorToolPart])
+// Reasoning + text — matches old WithReasoning single-reasoning intent
+const mockDataReasoning = createMockData([reasoningPart, textPart])
+// Completed bash tool — exercises ShellRollingResults path
+const mockDataBash = createMockData([bashCompleted])
+// Three context-group tools — exercises ContextToolGroupHeader collapse path
+const mockDataContextGroup = createMockData([completedToolPart, grepCompleted, globCompleted, textPart])
+// Completed edit tool with filediff — exercises the "Open in Diff Viewer" button path
+const mockDataEdit = createMockData([editCompletedPart])
+const mockDataWrite = createMockData([writeCompletedPart])
+
+const boardReadPart: ToolPart = {
+  id: "part-board-read-001",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-board-read-001",
+  tool: "board_read",
+  state: {
+    status: "completed",
+    input: {},
+    output: JSON.stringify({
+      messages: [
+        {
+          from: "main",
+          to: "worker",
+          fromLabel: "Coordinator",
+          toLabel: "Worker",
+          body: "**First message**",
+        },
+        {
+          from: "worker",
+          to: "reviewer",
+          fromLabel: "Worker",
+          toLabel: "Reviewer",
+          body: "**Second message**",
+        },
+      ],
+      hasMore: false,
+    }),
+    title: "Read agent messages 2",
+    metadata: {},
+    time: { start: now - 4000, end: now - 3500 },
   },
 }
 
-function AllProviders(props: { children: any }) {
+const mockDataBoardRead = createMockData([boardReadPart])
+
+const boardBroadcastPart: ToolPart = {
+  id: "part-board-broadcast-001",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-board-broadcast-001",
+  tool: "board_post",
+  state: {
+    status: "completed",
+    input: { to: "ALL", type: "INFO", body: "Broadcast update" },
+    output: JSON.stringify({
+      from: "main",
+      to: "ALL",
+      fromLabel: "Coordinator",
+      type: "INFO",
+      body: "Broadcast update",
+    }),
+    title: "INFO to ALL",
+    metadata: { from: "main", to: "ALL", fromLabel: "Coordinator" },
+    time: { start: now - 3000, end: now - 2500 },
+  },
+}
+
+const mockDataBoardBroadcast = createMockData([boardBroadcastPart])
+
+function AllProviders(props: { children: any; data?: MockData; onOpenDiff?: () => void }) {
   return (
-    <DataProvider data={mockData} directory="/project">
+    <DataProvider data={props.data ?? mockData} directory="/project" onOpenDiff={props.onOpenDiff}>
       <DiffComponentProvider component={Diff}>
         <CodeComponentProvider component={Code}>
           <FileComponentProvider component={File}>
@@ -148,6 +355,10 @@ function AllProviders(props: { children: any }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
+
 const meta: Meta = {
   title: "Components/MessagePart",
   parameters: { layout: "padded" },
@@ -155,6 +366,8 @@ const meta: Meta = {
 
 export default meta
 type Story = StoryObj
+
+// --- User message bubble ---
 
 export const UserMessageStory: Story = {
   name: "UserMessage",
@@ -165,76 +378,380 @@ export const UserMessageStory: Story = {
   ),
 }
 
+// --- Assistant: text + one completed read tool (grouped header) ---
+
 export const AssistantMessageStory: Story = {
   name: "AssistantMessage",
   render: () => (
     <AllProviders>
-      <AssistantMessageDisplay message={mockAssistantMessage} parts={[textPart, completedToolPart]} />
+      <AssistantParts messages={[mockAssistantMessage]} />
     </AllProviders>
   ),
 }
+
+// --- Edit tool in running/pending state (Part → ToolPartDisplay path) ---
 
 export const WithRunningTool: Story = {
   render: () => (
-    <AllProviders>
-      <AssistantMessageDisplay message={mockAssistantMessage} parts={[runningToolPart]} />
+    <AllProviders data={mockDataRunning}>
+      <AssistantParts messages={[mockAssistantMessage]} working />
     </AllProviders>
   ),
 }
 
+// --- Edit tool in error state → renders red error card ---
+
 export const WithErrorTool: Story = {
   render: () => (
-    <AllProviders>
-      <AssistantMessageDisplay message={mockAssistantMessage} parts={[errorToolPart]} />
+    <AllProviders data={mockDataError}>
+      <AssistantParts messages={[mockAssistantMessage]} />
     </AllProviders>
   ),
 }
+
+// --- User + assistant stacked (tool first, then text — matches original order) ---
 
 export const FullConversationTurn: Story = {
   render: () => (
     <AllProviders>
       <div style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
         <UserMessageDisplay message={mockUserMessage} parts={[userTextPart]} />
-        <AssistantMessageDisplay message={mockAssistantMessage} parts={[completedToolPart, textPart]} />
+        <AssistantParts messages={[mockAssistantMessage]} />
       </div>
     </AllProviders>
   ),
 }
 
+// --- Reasoning block collapsed (default state) ---
+
 export const WithReasoningCollapsed: Story = {
   name: "WithReasoning (collapsed)",
   render: () => (
-    <AllProviders>
-      <AssistantMessageDisplay message={mockAssistantMessage} parts={[reasoningPart, textPart]} />
+    <AllProviders data={mockDataReasoning}>
+      <AssistantParts messages={[mockAssistantMessage]} />
     </AllProviders>
   ),
 }
 
+// --- Reasoning block expanded via play interaction ---
+
 export const WithReasoningExpanded: Story = {
   name: "WithReasoning (expanded)",
-  render: () => {
-    // Use a wrapper to render with the collapsible open by default
-    const expandedReasoningPart = { ...reasoningPart, id: "part-reasoning-expanded" }
-    return (
-      <AllProviders>
-        <AssistantMessageDisplay message={mockAssistantMessage} parts={[expandedReasoningPart, textPart]} />
-      </AllProviders>
-    )
-  },
+  render: () => (
+    <AllProviders data={mockDataReasoning}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-    // Click the collapsible trigger to expand it
     const trigger = canvasElement.querySelector("[data-slot='reasoning-header']")?.closest("button")
     if (trigger) trigger.click()
   },
 }
 
-export const MessageSwitch: Story = {
+// --- Bash tool (completed, collapsed) — exercises the ShellRollingResults path ---
+
+export const WithBashTool: Story = {
   render: () => (
-    <AllProviders>
-      <div style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
-        <Message message={mockUserMessage} parts={[userTextPart]} />
-        <Message message={mockAssistantMessage} parts={[textPart, completedToolPart]} />
-      </div>
+    <AllProviders data={mockDataBash}>
+      <AssistantParts messages={[mockAssistantMessage]} />
     </AllProviders>
   ),
+}
+
+// --- Bash tool (completed, expanded) — play clicks the header to open the output panel ---
+
+export const WithBashToolExpanded: Story = {
+  render: () => (
+    <AllProviders data={mockDataBash}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const header = canvasElement.querySelector("[data-slot='shell-rolling-header-clip']") as HTMLElement | null
+    if (header) header.click()
+  },
+}
+
+export const WithBoardRead: Story = {
+  render: () => (
+    <AllProviders data={mockDataBoardRead}>
+      <AgentAvatarPalette ids={["worker", "reviewer"]}>
+        <AssistantParts messages={[mockAssistantMessage]} />
+      </AgentAvatarPalette>
+    </AllProviders>
+  ),
+}
+
+export const WithBoardBroadcast: Story = {
+  render: () => (
+    <AllProviders data={mockDataBoardBroadcast}>
+      <AgentAvatarPalette ids={["worker", "reviewer"]}>
+        <AssistantParts messages={[mockAssistantMessage]} />
+      </AgentAvatarPalette>
+    </AllProviders>
+  ),
+}
+
+// --- Three context-group tools + text — exercises ContextToolGroupHeader collapse ---
+
+export const WithContextGroup: Story = {
+  render: () => (
+    <AllProviders data={mockDataContextGroup}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- Completed edit tool with filediff → "Open in Diff Viewer" icon visible ---
+//
+// CSS :hover cannot be triggered reliably from Storybook `play` functions,
+// so the action slot is force-revealed via a scoped style override. This
+// captures the layout with the icon present so the visual regression
+// suite catches any regression in:
+//   - the `:has()` parent-grow rule on basic-tool-tool-info
+//   - the `margin-left: auto` pushing the action to the right
+//   - the icon-button ghost variant in the tool-trigger row
+export const WithEditToolOpenDiffAction: Story = {
+  name: "WithEditTool (open-diff action visible)",
+  render: () => (
+    <AllProviders data={mockDataEdit} onOpenDiff={() => {}}>
+      <style>{`[data-slot="tool-trigger-actions"] { opacity: 1 !important; }`}</style>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- Completed write tool with content → "Open in Diff Viewer" icon visible ---
+export const WithWriteToolOpenDiffAction: Story = {
+  name: "WithWriteTool (open-diff action visible)",
+  render: () => (
+    <AllProviders data={mockDataWrite} onOpenDiff={() => {}}>
+      <style>{`[data-slot="tool-trigger-actions"] { opacity: 1 !important; }`}</style>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- All 5 tool hint error types in a single screenshot ---
+
+const hintErrors: ToolPart[] = [
+  {
+    id: "part-hint-001",
+    sessionID: SESSION_ID,
+    messageID: ASST_MSG_ID,
+    type: "tool",
+    callID: "call-hint-001",
+    tool: "write",
+    state: {
+      status: "error",
+      input: { filePath: "src/config.ts" },
+      error:
+        "Error: File already exists — read it before overwriting it. Use the Read tool first to see its current contents.",
+      time: { start: now - 6000, end: now - 5500 },
+    },
+  },
+  {
+    id: "part-hint-002",
+    sessionID: SESSION_ID,
+    messageID: ASST_MSG_ID,
+    type: "tool",
+    callID: "call-hint-002",
+    tool: "edit",
+    state: {
+      status: "error",
+      input: { filePath: "src/app.tsx" },
+      error: "Error: File has been modified since it was last read. Please read it again before editing.",
+      time: { start: now - 5500, end: now - 5000 },
+    },
+  },
+  {
+    id: "part-hint-003",
+    sessionID: SESSION_ID,
+    messageID: ASST_MSG_ID,
+    type: "tool",
+    callID: "call-hint-003",
+    tool: "edit",
+    state: {
+      status: "error",
+      input: { filePath: "src/utils.ts" },
+      error: "Error: oldString and newString are identical. No changes were made.",
+      time: { start: now - 5000, end: now - 4500 },
+    },
+  },
+  {
+    id: "part-hint-004",
+    sessionID: SESSION_ID,
+    messageID: ASST_MSG_ID,
+    type: "tool",
+    callID: "call-hint-004",
+    tool: "edit",
+    state: {
+      status: "error",
+      input: { filePath: "src/index.ts" },
+      error:
+        "Error: oldString not found in file. The oldString must match exactly, including whitespace and indentation.",
+      time: { start: now - 4500, end: now - 4000 },
+    },
+  },
+  {
+    id: "part-hint-005",
+    sessionID: SESSION_ID,
+    messageID: ASST_MSG_ID,
+    type: "tool",
+    callID: "call-hint-005",
+    tool: "edit",
+    state: {
+      status: "error",
+      input: { filePath: "src/counter.tsx" },
+      error:
+        "Error: Found multiple matches for oldString. Provide more surrounding lines to identify the correct match.",
+      time: { start: now - 4000, end: now - 3500 },
+    },
+  },
+]
+
+const mockDataHintErrors = createMockData(hintErrors)
+
+// --- Question tool: answered (reference) ---
+
+const questionAnsweredPart: ToolPart = {
+  id: "part-question-answered",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-question-answered",
+  tool: "question",
+  state: {
+    status: "completed",
+    input: {
+      questions: [
+        {
+          question: "Should I continue with this approach?",
+          header: "Continue?",
+          options: [
+            { label: "Yes", description: "Proceed with the current plan" },
+            { label: "No", description: "Stop and reconsider" },
+          ],
+        },
+        {
+          question: "Which library should I use for date formatting?",
+          header: "Library",
+          options: [
+            { label: "date-fns", description: "Lightweight, tree-shakeable" },
+            { label: "luxon", description: "Full-featured DateTime library" },
+            { label: "dayjs", description: "Moment.js compatible, 2kB" },
+          ],
+        },
+      ],
+    },
+    output: 'User answered: "Should I continue?"="Yes", "Which library?"="date-fns"',
+    title: "Asked 2 questions",
+    metadata: { answers: [["Yes"], ["date-fns"]] },
+    time: { start: now - 8000, end: now - 7000 },
+  },
+}
+
+// --- Question tool: dismissed (exercises the fix) ---
+
+const questionDismissedPart: ToolPart = {
+  id: "part-question-dismissed",
+  sessionID: SESSION_ID,
+  messageID: ASST_MSG_ID,
+  type: "tool",
+  callID: "call-question-dismissed",
+  tool: "question",
+  state: {
+    status: "completed",
+    input: {
+      questions: [
+        {
+          question: "Should I continue with this approach?",
+          header: "Continue?",
+          options: [
+            { label: "Yes", description: "Proceed with the current plan" },
+            { label: "No", description: "Stop and reconsider" },
+          ],
+        },
+        {
+          question: "Which library should I use for date formatting?",
+          header: "Library",
+          options: [
+            { label: "date-fns", description: "Lightweight, tree-shakeable" },
+            { label: "luxon", description: "Full-featured DateTime library" },
+          ],
+        },
+      ],
+    },
+    output: "User dismissed the question.",
+    title: "Question dismissed",
+    metadata: { answers: [], dismissed: true },
+    time: { start: now - 8000, end: now - 7000 },
+  },
+}
+
+const mockDataQuestionAnswered = createMockData([questionAnsweredPart, textPart])
+const mockDataQuestionDismissed = createMockData([questionDismissedPart, textPart])
+
+export const ToolHintErrors: Story = {
+  render: () => (
+    <AllProviders data={mockDataHintErrors}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- Question tool: answered (expanded by default) ---
+
+export const QuestionAnswered: Story = {
+  name: "QuestionAnswered",
+  render: () => (
+    <AllProviders data={mockDataQuestionAnswered}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- Question tool: answered (manually collapsed) ---
+
+export const QuestionAnsweredCollapsed: Story = {
+  name: "QuestionAnswered (manually collapsed)",
+  render: () => (
+    <AllProviders data={mockDataQuestionAnswered}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const trigger = canvasElement
+      .querySelector('[data-slot="basic-tool-tool-title"]')
+      ?.closest("button")
+    if (trigger) trigger.click()
+  },
+}
+
+// --- Question tool: dismissed (collapsed — "2 dismissed" subtitle) ---
+
+export const QuestionDismissed: Story = {
+  name: "QuestionDismissed",
+  render: () => (
+    <AllProviders data={mockDataQuestionDismissed}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+}
+
+// --- Question tool: dismissed (expanded — shows questions with "Dismissed" labels) ---
+
+export const QuestionDismissedExpanded: Story = {
+  name: "QuestionDismissed (expanded)",
+  render: () => (
+    <AllProviders data={mockDataQuestionDismissed}>
+      <AssistantParts messages={[mockAssistantMessage]} />
+    </AllProviders>
+  ),
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const trigger = canvasElement
+      .querySelector('[data-slot="basic-tool-tool-title"]')
+      ?.closest("button")
+    if (trigger) trigger.click()
+  },
 }

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { KILO_API_BASE } from "./constants.js"
+import { getDefaultHeaders, buildKiloHeaders } from "../headers.js"
 
 /**
  * Kilo notification schema
@@ -15,6 +16,7 @@ export const KilocodeNotificationSchema = z.object({
     })
     .optional(),
   showIn: z.array(z.string()).optional(),
+  suggestModelId: z.string().optional(),
 })
 
 export type KilocodeNotification = z.infer<typeof KilocodeNotificationSchema>
@@ -43,8 +45,9 @@ export async function fetchKilocodeNotifications(options: {
   try {
     const response = await fetch(url, {
       headers: {
+        ...getDefaultHeaders(),
+        ...buildKiloHeaders(undefined, { kilocodeOrganizationId: options.kilocodeOrganizationId }),
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(NOTIFICATIONS_TIMEOUT_MS),
     })

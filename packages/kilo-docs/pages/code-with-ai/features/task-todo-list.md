@@ -9,7 +9,7 @@ description: "Track and manage tasks with AI-generated todo lists"
 
 **Why it matters**: Complex workflows have lots of moving parts. Without structure, it's easy to miss steps, duplicate work, or forget what comes next.
 
-{% image src="/docs/img/task-todo-list/task-todo-list-1.png" alt="Task Todo List overview showing interactive checklist in Kilo Code" width="500" /%}
+{% image src="/docs/img/screenshot-tests/kilo-vscode/visual-regression/composite-webview/todo-write-docs-overview-chromium-linux.png" alt="Task Todo List overview showing interactive checklist in Kilo Code" width="420" /%}
 
 ## How to trigger todo lists
 
@@ -21,7 +21,7 @@ description: "Track and manage tasks with AI-generated todo lists"
 
 **Manual triggers**:
 
-- Ask Kilo to "use the [update_todo_list tool](/docs/automate/tools/update-todo-list)"
+- Ask Kilo to "use the [`todowrite` tool](/docs/automate/tools)"
 - Say "create a todo list"
 
 **The bottom line**: Kilo decides what goes in the list, but you can provide feedback during approval dialogs.
@@ -30,7 +30,7 @@ description: "Track and manage tasks with AI-generated todo lists"
 
 ## How todo lists are updated
 
-Todo lists are managed with the [`update_todo_list` tool](/docs/automate/tools/update-todo-list). Each time Kilo updates the list, it replaces the entire checklist with the latest view of the task.
+Todo lists are managed with the [`todowrite` tool](/docs/automate/tools). Each update replaces the entire checklist with the latest view of the task.
 
 Kilo updates the list when:
 
@@ -53,7 +53,7 @@ Kilo updates the list when:
 **1. Task Header Summary**
 Quick progress overview with your next important item
 
-{% image src="/docs/img/task-todo-list/task-header.png" alt="Task header summary showing todo list progress" width="500" /%}
+{% image src="/docs/img/screenshot-tests/kilo-vscode/visual-regression/chat/task-header-with-todos-chromium-linux.png" alt="Task header summary showing todo list progress" width="420" /%}
 
 Click the task header summary to expand the full list inline and jump to the current item.
 
@@ -94,7 +94,7 @@ When Kilo proposes a todo list update, you can edit the list before approving. U
 ## Common questions
 
 **"Can I create my own todo lists?"**
-Yes, just ask Kilo to use the update_todo_list tool. But Kilo stays in control of the content and workflow.
+Yes, just ask Kilo to use the `todowrite` tool. Kilo stays in control of the content and workflow.
 
 **"What about simple tasks?"**
 Kilo typically skips todo lists for simple tasks. The overhead isn't worth it.
@@ -113,7 +113,7 @@ You can disable todo lists in Settings -> Advanced -> **Enable todo list tool**.
 
 **When to use it**: Long workflows where constant interruptions slow you down.
 
-**How to enable it**: Check the [Update Todo List auto-approval settings](/docs/getting-started/settings/auto-approving-actions#update-todo-list).
+**How to enable it**: Allow `todowrite` in the [auto-approval settings](/docs/getting-started/settings/auto-approving-actions).
 
 **The catch**: Less control, but faster execution.
 {% /callout %}

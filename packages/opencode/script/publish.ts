@@ -3,9 +3,33 @@ import { $ } from "bun"
 import pkg from "../package.json"
 import { Script } from "@opencode-ai/script"
 import { fileURLToPath } from "url"
+import { NpmPublish } from "./kilocode/npm-publish" // kilocode_change
 
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
+
+async function published(name: string, version: string) {
+  return (await $`npm view ${name}@${version} version`.nothrow()).exitCode === 0
+}
+
+async function publish(dir: string, name: string, version: string) {
+  // GitHub artifact downloads can drop the executable bit, and Docker uses the
+  // unpacked dist binaries directly rather than the published tarball.
+  if (process.platform !== "win32") await $`chmod -R 755 .`.cwd(dir)
+  if (await published(name, version)) {
+    console.log(`already published ${name}@${version}`)
+    return
+  }
+  await $`bun pm pack`.cwd(dir)
+  // kilocode_change start
+  await NpmPublish.retry({
+    name,
+    version,
+    run: () => $`npm publish *.tgz --access public --tag ${Script.channel} --provenance`.cwd(dir),
+    exists: () => published(name, version),
+  })
+  // kilocode_change end
+}
 
 const binaries: Record<string, string> = {}
 // kilocode_change start
@@ -34,10 +58,14 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
         // kilocode_change end
       },
       scripts: {
-        postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
+        postinstall: "node ./postinstall.mjs",
       },
       version: version,
       license: pkg.license,
+      keywords: pkg.keywords, // kilocode_change
+      private: pkg.private, // kilocode_change
+      os: ["darwin", "linux", "win32"],
+      cpu: ["arm64", "x64"],
       optionalDependencies: binaries,
       // kilocode_change start
       repository: {
@@ -52,30 +80,24 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
 )
 
 const tasks = Object.entries(binaries).map(async ([name]) => {
-  if (process.platform !== "win32") {
-    await $`chmod -R 755 .`.cwd(`./dist/${name}`)
-  }
-  await $`bun pm pack`.cwd(`./dist/${name}`)
-  await $`npm publish *.tgz --access public --tag ${Script.channel} --provenance`.cwd(`./dist/${name}`) // kilocode_change
+  await publish(`./dist/${name}`, name, binaries[name])
 })
 await Promise.all(tasks)
-await $`cd ./dist/${pkg.name} && bun pm pack && npm publish *.tgz --access public --tag ${Script.channel} --provenance` // kilocode_change
+await publish(`./dist/${pkg.name}`, pkg.name, version) // kilocode_change
 
-const image = "ghcr.io/kilo-org/kilo" // kilocode_change
+const image = "ghcr.io/kilo-org/kilocode" // kilocode_change
 const platforms = "linux/amd64,linux/arm64"
 const tags = [`${image}:${version}`, `${image}:${Script.channel}`]
 const tagFlags = tags.flatMap((t) => ["-t", t])
-await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
 
 // registries
 if (!Script.preview) {
+  await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
   // Calculate SHA values
-  // kilocode_change start
   const arm64Sha = await $`sha256sum ./dist/kilo-linux-arm64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim())
   const x64Sha = await $`sha256sum ./dist/kilo-linux-x64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim())
   const macX64Sha = await $`sha256sum ./dist/kilo-darwin-x64.zip | cut -d' ' -f1`.text().then((x) => x.trim())
   const macArm64Sha = await $`sha256sum ./dist/kilo-darwin-arm64.zip | cut -d' ' -f1`.text().then((x) => x.trim())
-  // kilocode_change end
 
   const [pkgver, _subver = ""] = Script.version.split(/(-.*)/, 2)
 
@@ -91,7 +113,7 @@ if (!Script.preview) {
     "pkgdesc='The AI coding agent built for the terminal.'",
     "url='https://github.com/Kilo-Org/kilocode'",
     "arch=('aarch64' 'x86_64')",
-    "license=('MIT')",
+    "license=('MIT' 'LGPL-2.0-or-later')", // kilocode_change
     "provides=('kilo')",
     "conflicts=('kilo')",
     "depends=('ripgrep')",
@@ -103,7 +125,14 @@ if (!Script.preview) {
     `sha256sums_x86_64=('${x64Sha}')`,
     "",
     "package() {",
-    '  install -Dm755 ./kilo "${pkgdir}/usr/bin/kilo"',
+    '  install -Dm755 ./kilo "${pkgdir}/usr/lib/kilo/kilo"', // kilocode_change
+    '  install -Dm755 ./bwrap "${pkgdir}/usr/lib/kilo/bwrap"', // kilocode_change
+    '  install -Dm644 ./kilo-sandbox-mutation-worker.js "${pkgdir}/usr/lib/kilo/kilo-sandbox-mutation-worker.js"', // kilocode_change
+    '  install -dm755 "${pkgdir}/usr/bin" "${pkgdir}/usr/lib/kilo/tree-sitter" "${pkgdir}/usr/share/licenses/kilo"', // kilocode_change
+    '  cp -r ./tree-sitter/. "${pkgdir}/usr/lib/kilo/tree-sitter/"', // kilocode_change
+    '  cp -r ./licenses/. "${pkgdir}/usr/share/licenses/kilo/"', // kilocode_change
+    "  printf '%s\\n' '#!/bin/sh' 'export KILO_TREE_SITTER_WASM_DIR=/usr/lib/kilo/tree-sitter' 'exec /usr/lib/kilo/kilo \"$@\"' > \"${pkgdir}/usr/bin/kilo\"", // kilocode_change
+    '  chmod 755 "${pkgdir}/usr/bin/kilo"', // kilocode_change
     "}",
     "",
   ].join("\n")
@@ -117,10 +146,11 @@ if (!Script.preview) {
         await Bun.file(`./dist/aur-${pkg}/PKGBUILD`).write(pkgbuild)
         await $`cd ./dist/aur-${pkg} && makepkg --printsrcinfo > .SRCINFO`
         await $`cd ./dist/aur-${pkg} && git add PKGBUILD .SRCINFO`
+        if ((await $`cd ./dist/aur-${pkg} && git diff --cached --quiet`.nothrow()).exitCode === 0) break
         await $`cd ./dist/aur-${pkg} && git commit -m "Update to v${Script.version}"`
         await $`cd ./dist/aur-${pkg} && git push`
         break
-      } catch (e) {
+      } catch {
         continue
       }
     }
@@ -145,7 +175,8 @@ if (!Script.preview) {
     `      sha256 "${macX64Sha}"`,
     "",
     "      def install",
-    '        bin.install "kilo"',
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
     "    if Hardware::CPU.arm?",
@@ -153,7 +184,8 @@ if (!Script.preview) {
     `      sha256 "${macArm64Sha}"`,
     "",
     "      def install",
-    '        bin.install "kilo"',
+    '        libexec.install "kilo", "kilo-sandbox-mutation-worker.js", "tree-sitter"', // kilocode_change
+    '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
     "  end",
@@ -163,14 +195,16 @@ if (!Script.preview) {
     `      url "https://github.com/Kilo-Org/kilocode/releases/download/v${Script.version}/kilo-linux-x64.tar.gz"`,
     `      sha256 "${x64Sha}"`,
     "      def install",
-    '        bin.install "kilo"',
+    '        libexec.install "kilo", "bwrap", "kilo-sandbox-mutation-worker.js", "tree-sitter", "licenses"', // kilocode_change
+    '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
     "    if Hardware::CPU.arm? and Hardware::CPU.is_64_bit?",
     `      url "https://github.com/Kilo-Org/kilocode/releases/download/v${Script.version}/kilo-linux-arm64.tar.gz"`,
     `      sha256 "${arm64Sha}"`,
     "      def install",
-    '        bin.install "kilo"',
+    '        libexec.install "kilo", "bwrap", "kilo-sandbox-mutation-worker.js", "tree-sitter", "licenses"', // kilocode_change
+    '        (bin/"kilo").write_env_script libexec/"kilo", KILO_TREE_SITTER_WASM_DIR: libexec/"tree-sitter"', // kilocode_change
     "      end",
     "    end",
     "  end",
@@ -189,6 +223,8 @@ if (!Script.preview) {
   await $`git clone ${tap} ./dist/homebrew-tap`
   await Bun.file("./dist/homebrew-tap/kilo.rb").write(homebrewFormula) // kilocode_change
   await $`cd ./dist/homebrew-tap && git add kilo.rb` // kilocode_change
-  await $`cd ./dist/homebrew-tap && git commit -m "Update to v${Script.version}"`
-  await $`cd ./dist/homebrew-tap && git push`
+  if ((await $`cd ./dist/homebrew-tap && git diff --cached --quiet`.nothrow()).exitCode !== 0) {
+    await $`cd ./dist/homebrew-tap && git commit -m "Update to v${Script.version}"`
+    await $`cd ./dist/homebrew-tap && git push`
+  }
 }

@@ -1,13 +1,14 @@
 ---
-title: "Kilo CLI"
+title: "Kilo Code CLI: Run the AI Coding Agent from Your Terminal"
 description: "Using Kilo Code from the command line"
+platform: new
 ---
 
 {% callout type="warning" title="Version Notice" %}
 This documentation applies only to Kilo version 1.0 and later. Users running versions below 1.0 should upgrade before proceeding.
 {% /callout %}
 
-# Kilo CLI
+# Kilo Code CLI: AI Coding Agent in Your Terminal
 
 Orchestrate agents from your terminal. Plan, debug, and code fast with keyboard-first navigation on the command line.
 
@@ -38,6 +39,14 @@ kilo --help
 
 After installation, run `kilo` and use the `/connect` command to add your first provider credentials. This is the interactive way to configure API keys for model providers.
 
+## Opening Links
+
+Links in agent responses use terminal hyperlink metadata when the terminal supports it. Kilo also handles links inside the TUI, so mouse capture does not make supported HTTP(S) links inactive. Move the pointer over a link to see the hover underline, then click it to open the default browser.
+
+Ghostty sends native link clicks through the TUI when mouse capture is enabled. Use `Ctrl+Shift+click` on Linux or `Cmd+Shift+click` on macOS for terminal-native activation. The application click handler does not depend on those modifiers.
+
+If a link cannot open, select and copy its visible URL. Links are opened on the machine running Kilo, so use the copy fallback when Kilo runs over SSH and the browser is on your local machine. `KILO_DISABLE_MOUSE=1` can help diagnose terminal-native link behavior, but it also disables TUI mouse controls and is not required for normal link activation.
+
 ## Update
 
 Upgrade the Kilo CLI:
@@ -60,96 +69,102 @@ Or use npm:
 
 ### Top-Level CLI Commands
 
-| Command                   | Description                                |
-| ------------------------- | ------------------------------------------ |
-| `kilo [project]`          | Start the TUI (Terminal User Interface)    |
-| `kilo run [message..]`    | Run with a message (non-interactive mode)  |
-| `kilo attach <url>`       | Attach to a running kilo server            |
-| `kilo serve`              | Start a headless server                    |
-| `kilo web`                | Start server and open web interface        |
-| `kilo auth`               | Manage credentials (login, logout, list)   |
-| `kilo agent`              | Manage agents (create, list)               |
-| `kilo mcp`                | Manage MCP servers (list, add, auth)       |
-| `kilo models [provider]`  | List available models                      |
-| `kilo stats`              | Show token usage and cost statistics       |
-| `kilo session`            | Manage sessions (list)                     |
-| `kilo export [sessionID]` | Export session data as JSON                |
-| `kilo import <file>`      | Import session data from JSON file or URL  |
-| `kilo upgrade [target]`   | Upgrade kilo to latest or specific version |
-| `kilo uninstall`          | Uninstall kilo and remove related files    |
-| `kilo pr <number>`        | Fetch and checkout a GitHub PR branch      |
-| `kilo github`             | Manage GitHub agent (install, run)         |
-| `kilo debug`              | Debugging and troubleshooting tools        |
-| `kilo completion`         | Generate shell completion script           |
+{% partial file="cli-commands-table.md" /%}
+
+For detailed help on every command and subcommand, see the [CLI Command Reference](/docs/code-with-ai/platforms/cli-reference).
+
+{% callout type="warning" title="Kilo Console is deprecated" %}
+The `kilo console` command and its browser interface are deprecated and will be removed in a future release. Use the CLI TUI, VS Code extension, or JetBrains plugin to run sessions. Use the CLI slash commands, other extensions, or edit Kilo configuration files directly to manage settings.
+{% /callout %}
 
 ### Global Options
 
-| Flag              | Description                         |
-| ----------------- | ----------------------------------- |
-| `--help`, `-h`    | Show help                           |
-| `--version`, `-v` | Show version number                 |
-| `--print-logs`    | Print logs to stderr                |
-| `--log-level`     | Log level: DEBUG, INFO, WARN, ERROR |
+| Flag | Description |
+|---|---|
+| `--help`, `-h` | Show help |
+| `--version`, `-v` | Show version number |
+| `--print-logs` | Print logs to stderr |
+| `--log-level` | Log level: DEBUG, INFO, WARN, ERROR |
 
 ### Interactive Slash Commands
 
 #### Session Commands
 
-| Command       | Aliases                | Description               |
-| ------------- | ---------------------- | ------------------------- |
-| `/sessions`   | `/resume`, `/continue` | Switch session            |
-| `/new`        | `/clear`               | New session               |
-| `/share`      | -                      | Share session             |
-| `/unshare`    | -                      | Unshare session           |
-| `/rename`     | -                      | Rename session            |
-| `/timeline`   | -                      | Jump to message           |
-| `/fork`       | -                      | Fork from message         |
-| `/compact`    | `/summarize`           | Compact/summarize session |
-| `/undo`       | -                      | Undo previous message     |
-| `/redo`       | -                      | Redo message              |
-| `/copy`       | -                      | Copy session transcript   |
-| `/export`     | -                      | Export session transcript |
-| `/timestamps` | `/toggle-timestamps`   | Show/hide timestamps      |
-| `/thinking`   | `/toggle-thinking`     | Show/hide thinking blocks |
+| Command | Aliases | Description |
+|---|---|---|
+| `/sessions` | `/resume`, `/continue` | Switch session |
+| `/new` | `/clear` | New session |
+| `/share` | - | Share session |
+| `/unshare` | - | Unshare session |
+| `/rename` | - | Rename session |
+| `/timeline` | - | Jump to message |
+| `/fork` | - | Fork from message |
+| `/compact` | `/summarize` | Compact/summarize session |
+| `/undo` | - | Undo previous message |
+| `/redo` | - | Redo message |
+| `/copy` | - | Copy latest agent response |
+| `/copy-session` | - | Copy session transcript |
+| `/export` | - | Export session transcript |
+| `/resume-claude [uuid]` | - | Import a Claude Code session transcript |
+| `/resume-codex [uuid]` | - | Import an OpenAI Codex session transcript |
+| `/move` | - | Move the current session to another project directory |
+| `/diff` | - | Open the diff viewer |
+| `/timestamps` | `/toggle-timestamps` | Show/hide timestamps |
+| `/thinking` | `/toggle-thinking` | Show/hide thinking blocks |
 
 #### Agent & Model Commands
 
-| Command   | Description  |
-| --------- | ------------ |
+| Command | Description |
+|---|---|
 | `/models` | Switch model |
 | `/agents` | Switch agent |
-| `/mcps`   | Toggle MCPs  |
+| `/mcps` | Toggle MCPs |
 
 #### Provider Commands
 
-| Command    | Description                                                               |
-| ---------- | ------------------------------------------------------------------------- |
+| Command | Description |
+|---|---|
 | `/connect` | Connect/add a provider - entry point for new users to add API credentials |
 
 #### System Commands
 
-| Command   | Aliases       | Description          |
-| --------- | ------------- | -------------------- |
-| `/status` | -             | View status          |
-| `/themes` | -             | Switch theme         |
-| `/help`   | -             | Show help            |
-| `/editor` | -             | Open external editor |
-| `/exit`   | `/quit`, `/q` | Exit the app         |
+| Command | Aliases | Description |
+|---|---|---|
+| `/status` | - | View status |
+| `/themes` | - | Switch theme |
+| `/help` | - | Show help |
+| `/reload` | - | Reload config, skills, agents, and commands from disk |
+| `/editor` | - | Open external editor |
+| `/auto-approve` | `/autoapprove`, `/approve-all`, `/approveall` | Toggle auto-approve mode for all permission prompts (saved to global config) |
+| `/caffeinate` | `/caffenate` | Toggle Keep Awake: prevent system sleep while Kilo sessions run |
+| `/privacy` | - | Toggle privacy mode (blurs PII in the TUI) |
+| `/exit` | `/quit`, `/q` | Exit the app |
 
 #### Kilo Gateway Commands (when connected)
 
-| Command    | Aliases                  | Description                       |
-| ---------- | ------------------------ | --------------------------------- |
-| `/profile` | `/me`, `/whoami`         | View your Kilo Gateway profile    |
-| `/teams`   | `/team`, `/org`, `/orgs` | Switch between Kilo Gateway teams |
+| Command | Aliases | Description |
+|---|---|---|
+| `/profile` | `/me`, `/whoami` | View your Kilo Gateway profile |
+| `/teams` | `/team`, `/org`, `/orgs` | Switch between Kilo Gateway teams |
+| `/remote` | - | Toggle remote mode for Cloud Agent access |
 
 #### Built-in Commands
 
-| Command                     | Description                                  |
-| --------------------------- | -------------------------------------------- |
-| `/init`                     | Create/update AGENTS.md file for the project |
-| `/local-review`             | Review code changes                          |
-| `/local-review-uncommitted` | Review uncommitted changes                   |
+| Command | Description |
+|---|---|
+| `/init` | Create/update AGENTS.md file for the project |
+| `/review` | Review code changes |
+| `/goal [objective \| pause \| resume \| clear]` | Start, pause, resume, or clear a [session goal](/docs/code-with-ai/agents/goals) |
+
+### Importing Claude Code and Codex Sessions
+
+Continue work started in Claude Code or the OpenAI Codex CLI without copying transcripts by hand:
+
+1. Start a new session with `/new` — the import commands only run in an empty session.
+2. Run `/resume-claude` or `/resume-codex`.
+3. Pick one of the 10 most recent sessions for the current directory, or pass a session UUID directly, for example `/resume-claude <uuid>`.
+
+Kilo discovers Claude Code transcripts under `~/.claude/projects/` and Codex CLI rollouts under `~/.codex/sessions/`. The imported history keeps its original order and ends with an import notice. Content that Kilo cannot represent, such as some tool outputs, is skipped and counted in that notice.
 
 ## Local Code Reviews
 
@@ -157,26 +172,92 @@ Review your code locally before pushing — catch issues early without waiting f
 
 ### Commands
 
-| Command                     | Description                                    |
-| --------------------------- | ---------------------------------------------- |
-| `/local-review`             | Review current branch changes vs base branch   |
-| `/local-review-uncommitted` | Review uncommitted changes (staged + unstaged) |
+| Command | Description |
+|---|---|
+| `/review` | Review staged, unstaged, and untracked changes (the default with no arguments) |
+| `/review uncommitted [guidance]` | Review uncommitted changes with optional guidance |
+| `/review branch [base] [guidance]` | Review the current branch against its detected or specified base, with optional guidance |
+| `/review <commit-hash>` | Review a specific commit |
+| `/review <PR URL or number>` | Review a pull request |
 
 ## Config Reference
 
 Configuration is managed through:
 
 - `/connect` command for provider setup (interactive)
-- Config files in **`~/.config/kilo/`**: the CLI (Kilo CLI 1.0 from [Kilo-Org/kilocode](https://github.com/Kilo-Org/kilocode)) merges `config.json`, `opencode.json`, and `opencode.jsonc`. Use **`opencode.json`** (or `opencode.jsonc`) for provider, model, permission, and **MCP** settings. Restart the CLI after editing. See [Using MCP in the CLI](/docs/automate/mcp/using-in-cli) for MCP config format.
+- Config files in **`~/.config/kilo/`**: use **`kilo.jsonc`** for provider, model, permission, and **MCP** settings. Restart the CLI after editing. See [Using MCP in Kilo Code](/docs/automate/mcp/using-in-kilo-code) for MCP config format.
+- **`tui.jsonc`** for terminal UI settings such as notifications, sounds, themes, and keybindings
 - `kilo auth` for credential management
+
+## CLI Notifications and Sounds
+
+CLI attention alerts are disabled by default. Enable and configure them by editing the TUI configuration:
+
+- Edit `~/.config/kilo/tui.jsonc` (or `tui.json`) for global settings.
+- Edit `.kilo/tui.json` (or `tui.jsonc`) for project settings.
+
+For VS Code sounds and notifications, see [Notifications](/docs/getting-started/settings/notifications).
+
+Use the following configuration for attention, desktop notification, sound, and volume controls:
+
+```json
+{
+  "attention": {
+    "enabled": true,
+    "notifications": true,
+    "sound": true,
+    "volume": 0.4
+  }
+}
+```
+
+- `enabled` is the master switch. When it is `false`, no attention notifications or sounds are delivered.
+- `notifications` requests a desktop notification when the terminal is not focused. Your terminal and operating system decide whether the notification is displayed.
+- `sound` enables the built-in attention sounds. Sounds can play while the terminal is focused.
+- `volume` accepts a value from `0` to `1`.
+
+### Custom Sounds
+
+To replace individual sounds, add file paths under `attention.sounds`:
+
+```json
+{
+  "attention": {
+    "enabled": true,
+    "sound": true,
+    "volume": 0.4,
+    "sounds": {
+      "question": "./sounds/question.mp3",
+      "permission": "./sounds/permission.mp3",
+      "error": "./sounds/error.mp3",
+      "done": "./sounds/done.mp3"
+    }
+  }
+}
+```
+
+Supported sound names are `default`, `question`, `permission`, `error`, `done`, and `subagent_done`. Relative paths are resolved from the directory containing the TUI configuration file. If an override cannot be loaded, Kilo falls back to the active sound pack and then the built-in `opencode.default` pack.
+
+The `attention.sound_pack` setting selects a sound pack registered by a TUI plugin. Setting an arbitrary pack name does not install or load a pack. Per-event file overrides remain the simplest way to customize sounds without a plugin.
+
+There is no slash command or command-palette toggle for notifications or sounds. Use `tui.json` or `tui.jsonc` so all attention behavior is controlled by the same configuration. Keep Awake is separate and has its own `/caffeinate` command; see [Keep Awake](/docs/getting-started/settings/keep-awake).
 
 ## Slash Commands
 
 The CLI's interactive mode supports slash commands for common operations. The main commands are documented above in the [Interactive Slash Commands](#interactive-slash-commands) section.
 
-{% callout type="tip" %}
-**Confused about /newtask vs /smol in the IDE?** See the [Using Modes](/docs/code-with-ai/agents/using-modes#understanding-newtask-vs-smol) documentation for details.
-{% /callout %}
+Use `/diff` to review working-tree changes. From the diff viewer, switch the source to the current branch compared with the main branch or to changes from the last assistant turn. Use `/move` to move the current session to another project directory.
+
+The `diff_open` and `session_move` TUI keybindings run the same actions and are unbound by default. Set them under `keybinds` in `tui.jsonc`:
+
+```jsonc
+{
+  "keybinds": {
+    "diff_open": "<leader>d",
+    "session_move": "<leader>o",
+  },
+}
+```
 
 ## Permissions
 
@@ -257,7 +338,7 @@ You can use `~` or `$HOME` at the start of a pattern to reference your home dire
 
 ### External Directories
 
-Use `external_directory` to allow tool calls that touch paths outside the working directory where Kilo was started. This applies to any tool that takes a path as input (for example `read`, `edit`, `list`, `glob`, `grep`, and many bash commands).
+Use `external_directory` to allow tool calls that touch paths outside the working directory where Kilo was started. This applies to any tool that takes a path as input (for example `read`, `edit`, `glob`, `grep`, and many bash commands).
 
 ```json
 {
@@ -286,6 +367,8 @@ Any directory allowed here inherits the same defaults as the current workspace. 
 }
 ```
 
+In Ask and Plan modes, `external_directory` allow rules can still permit reads outside the workspace. They do not enable writes or mutating commands that those modes deny, and explicit `external_directory` deny rules still win.
+
 **Aliases:** `/t` and `/history` can be used as shorthand for `/tasks`
 
 ## Configuration
@@ -294,12 +377,16 @@ The Kilo CLI is a fork of [OpenCode](https://opencode.ai) and supports the same 
 
 ### Config File Location (Kilo CLI 1.0)
 
-| Scope       | Path                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------- |
-| **Global**  | `~/.config/kilo/opencode.json` or `opencode.jsonc` (Windows: config dir may vary; same filenames) |
-| **Project** | `./opencode.json` or `./.opencode/` in project root                                               |
+| Scope | Path |
+|---|---|
+| **Global** | `~/.config/kilo/kilo.json[c]` or legacy `opencode.json[c]` (Windows config dir may vary) |
+| **Project** | `./kilo.json[c]`, legacy `./opencode.json[c]`, or config inside `./.kilo/` (legacy `./.kilocode/` is also read) |
 
 Project-level configuration takes precedence over global settings.
+
+{% callout type="warning" %}
+**Migrating from opencode?** Kilo no longer falls back to opencode configuration stored in `.opencode` directories (such as `~/.config/opencode` or a project `./.opencode/`). To keep using it, move your global config into `~/.config/kilo/` and any project config into `./.kilo/`.
+{% /callout %}
 
 ### Key Configuration Options
 
@@ -319,13 +406,115 @@ Project-level configuration takes precedence over global settings.
 
 Common configuration options include:
 
-- **`model`** - Default model to use
-- **`provider`** - Provider-specific settings (API keys, base URLs, custom models)
+- **`model`** - Default model in `provider_id/model_id` format (e.g., `"anthropic/claude-sonnet-4-20250514"`)
+- **`provider`** - Provider-specific settings (API keys, base URLs, [custom models](/docs/code-with-ai/agents/custom-models))
 - **`mcp`** - MCP server configuration
 - **`permission`** - Tool permission settings (`allow` or `ask`)
 - **`instructions`** - Paths to instruction files (e.g., `["CONTRIBUTING.md", ".cursor/rules/*.md"]`)
-- **`formatter`** - Code formatter configuration
+- **`formatter`** - Code formatter configuration (`true`, `false`, or formatter-specific entries)
+- **`lsp`** - Language server configuration (`true`, `false`, or server-specific entries)
 - **`disabled_providers`** / **`enabled_providers`** - Control which providers are available
+- **`privacy_mode`** - Blur PII in the TUI (balance, team name, Kilo Pass usage) and require confirmation before `/profile` reveals account details — see [Privacy Mode](#privacy-mode)
+
+{% callout type="tip" %}
+**Using a model that's not in the built-in list?** You can register any model by adding it under `provider.<provider_id>.models` in your config file. See [Custom Models](/docs/code-with-ai/agents/custom-models) for full details and examples.
+{% /callout %}
+
+### Formatter and LSP Toggles
+
+Set `formatter` or `lsp` to `true` to use built-in defaults, or `false` to disable the feature completely:
+
+```jsonc
+{
+  "formatter": true,
+  "lsp": false,
+}
+```
+
+Both keys also accept object configuration for specific tools or language servers. Custom LSP server entries must include an `extensions` array unless the entry disables a built-in server:
+
+```jsonc
+{
+  "lsp": {
+    "my-language-server": {
+      "command": ["my-lsp", "--stdio"],
+      "extensions": [".foo"],
+    },
+  },
+}
+```
+
+### TUI Keybindings on Windows
+
+The TUI gives `Ctrl+Z` to input undo on Windows because native Windows terminals do not support POSIX terminal suspend. On Windows, `input_undo` defaults to `ctrl+z,ctrl+-,super+z` and `terminal_suspend` is disabled. On macOS and Linux, `terminal_suspend` defaults to `ctrl+z`.
+
+#### Enabling Shift+Enter in Windows Terminal
+
+Some terminals don't send modifier keys with Enter by default. Windows Terminal requires a one-time configuration to forward `Shift+Enter` as an escape sequence that Kilo can read.
+
+Open your `settings.json` at:
+
+```
+%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json
+```
+
+Add this entry to the root-level `actions` array:
+
+```json
+"actions": [
+  {
+    "command": {
+      "action": "sendInput",
+      "input": "\u001b[13;2u"
+    },
+    "id": "User.sendInput.ShiftEnterCustom"
+  }
+]
+```
+
+Add this entry to the root-level `keybindings` array:
+
+```json
+"keybindings": [
+  {
+    "keys": "shift+enter",
+    "id": "User.sendInput.ShiftEnterCustom"
+  }
+]
+```
+
+Save the file and restart Windows Terminal or open a new tab. `Shift+Enter` will now insert a newline in the Kilo prompt instead of submitting the message.
+
+### OpenTelemetry Export
+
+Kilo telemetry is enabled by default and can be disabled with `experimental.openTelemetry = false`:
+
+```jsonc
+{
+  "experimental": {
+    "openTelemetry": false,
+  },
+}
+```
+
+If `OTEL_EXPORTER_OTLP_ENDPOINT` is set, the CLI exports OpenTelemetry traces and logs to that OTLP HTTP endpoint. You can also pass `OTEL_EXPORTER_OTLP_HEADERS` as comma-separated `key=value` pairs and `OTEL_RESOURCE_ATTRIBUTES` as comma-separated resource attributes. Request spans include `http.method`, `http.path`, route params such as `session.id` and `message.id`, and internal params under the `opencode.*` namespace.
+
+### Privacy Mode
+
+Set `privacy_mode` to `true` in `kilo.jsonc`, or toggle it with the `/privacy` command, to blur always-visible personal information in the TUI:
+
+```jsonc
+{
+  "privacy_mode": true,
+}
+```
+
+When privacy mode is on:
+
+- The sidebar footer shows the balance as `•••`, collapses the team name to "Team credits", and hides the Kilo Pass usage block.
+- `/profile` asks for confirmation before revealing your email, name, balance, and team on screen.
+
+Privacy mode only affects the TUI display. The `kilo profile` CLI command is unaffected.
 
 ### Environment Variables
 
@@ -342,6 +531,10 @@ Use `{env:VARIABLE_NAME}` syntax in config files to reference environment variab
   }
 }
 ```
+
+{% callout type="warning" title="Only works in trusted config" %}
+`{env:VAR}` (and `{file:...}`) references are resolved **only** in trusted config: your global config (`~/.config/kilo`), a config passed via `KILO_CONFIG` / `KILO_CONFIG_CONTENT`, or organization/MDM-managed config. A project-level `kilo.json` / `opencode.json` committed to a repository **cannot** use `{env:VAR}` — the reference is ignored and a warning is logged. This prevents a malicious repository from exfiltrating your secrets to an attacker-controlled `baseURL` simply by being opened. `{file:...}` still works in project config, but only for files that resolve inside the project root — references that leave it (absolute paths outside the root, `../` traversal, and symlink escapes) are rejected.
+{% /callout %}
 
 For full details on all configuration options including compaction, file watchers, plugins, and experimental features, see the [OpenCode Config documentation](https://opencode.ai/docs/config).
 
@@ -367,10 +560,14 @@ When running in interactive mode, command approval requests show hierarchical op
 Selecting an "Always run" option will:
 
 1. Approve and execute the current command
-2. Add the pattern to your `execute.allowed` list in the config
-3. Auto-approve matching commands in the future
+2. Save the selected pattern as an `allow` rule under `permission.bash` in your global config
+3. Auto-approve future matching commands, including matching approvals already waiting in other open sessions
 
-This allows you to progressively build your auto-approval rules without manually editing the config file.
+Kilo only saves the pattern you select. Approving a specific command does not approve redirected variants or broader command patterns unless that broader option is shown and selected.
+
+### Pasting Large Text
+
+Pasting a large block of text (five or more lines, or over 800 characters) into the prompt collapses it into a placeholder such as `[Pasted ~6 lines]` to keep the prompt readable. To view or edit the pasted text, paste the same text again — the matching placeholder expands in place.
 
 ## Autonomous Mode (Non-Interactive)
 
@@ -407,6 +604,8 @@ This instructs the AI to proceed without user input.
 - `0`: Success (task completed)
 - `124`: Timeout (task exceeded time limit)
 - `1`: Error (initialization or execution failure)
+
+Without `--auto`, a non-interactive run cannot prompt for approval and auto-rejects any permission request it receives. If a run auto-rejected at least one request, it exits `1` with a stderr diagnostic naming the cause, since the task likely did not complete. Pass `--auto` for autonomous use.
 
 ### Example CI/CD Integration
 
@@ -455,6 +654,44 @@ kilo --continue
 - Cannot be used with a prompt argument
 - Only works when there's at least one previous session in the workspace
 
+## Remote Connections
+
+Remote Connections let you access your local CLI sessions from the Cloud Agents web interface. Requires [Kilo Gateway](/docs/gateway) connection.
+
+### Enabling Remote Mode
+
+**Toggle during a session:**
+
+```
+/remote
+```
+
+Requires connection to Kilo Gateway. The `/remote` command appears only when authenticated.
+
+**Enable by default:**
+
+Add to `~/.config/kilo/config.json`:
+
+```json
+{
+  "remote_control": true
+}
+```
+
+### Using Remote Mode
+
+Once enabled, start a CLI session and open [Cloud Agents](https://app.kilo.ai/cloud). Your local session appears in the dashboard. See [Cloud Agent Remote Connections](/docs/code-with-ai/platforms/cloud-agent#remote-connections) for details.
+
+### Requirements
+
+- Connection to Kilo Gateway
+- Same Kilo account on CLI and Cloud Agent
+- CLI must remain running with internet connection
+
+{% callout type="warning" title="Security Warning" %}
+Anyone with access to your Kilo account can send messages to your computer when remote mode is enabled.
+{% /callout %}
+
 ## Environment Variable Overrides
 
 The CLI supports overriding config values with environment variables. The supported environment variables are:
@@ -463,10 +700,20 @@ The CLI supports overriding config values with environment variables. The suppor
 - For `kilocode` provider: `KILOCODE_<FIELD_NAME>` (e.g., `KILOCODE_MODEL` → `kilocodeModel`)
 - For other providers: `KILO_<FIELD_NAME>` (e.g., `KILO_API_KEY` → `apiKey`)
 
-## Switching into an Organization from the CLI
+## Using the CLI in an Organization
 
-Use the `/teams` command to see a list of all organizations you can switch into.
+If you belong to a Kilo organization (Team or Enterprise), you can route CLI requests through that organization. The process differs slightly between interactive and non-interactive usage.
 
-Use `/teams` and select a team to switch teams.
+### Interactive Usage
 
-The process is the same when switching into a Team or Enterprise organization.
+In an interactive CLI session, use the `/teams` command to select an organization from your membership list.
+
+Your selection is persisted locally so it carries over to future sessions.
+
+### Non-Interactive Usage (`kilo run`)
+
+There is no `--org` or `--team` flag on `kilo run`. Instead, the organization is determined from the following sources, in order of priority (highest first):
+
+1. **`KILO_ORG_ID` environment variable** — Best for non-interactive and CI environments.
+
+2. **`Persisted selection from the last `/teams` pick`** — If you've run an interactive session and selected an organization via `/teams`, that selection is stored in the CLI auth file and reused automatically.

@@ -10,12 +10,18 @@ export const AutomateNav: NavSection[] = [
         href: "/automate/code-reviews/overview",
         children: "Code Reviews",
         subLinks: [
-          { href: "/automate/code-reviews/overview", children: "Overview" },
           { href: "/automate/code-reviews/github", children: "GitHub" },
           { href: "/automate/code-reviews/gitlab", children: "GitLab" },
         ],
       },
-      { href: "/automate/agent-manager", children: "Agent Manager" },
+      {
+        href: "/automate/agent-manager",
+        children: "Agent Manager",
+        subLinks: [
+          { href: "/automate/agent-manager-workflows", children: "Workflows" },
+          { href: "/automate/agent-manager-projects", children: "Multi-project" },
+        ],
+      },
     ],
   },
   {
@@ -27,14 +33,14 @@ export const AutomateNav: NavSection[] = [
         children: "Shell Integration",
       },
       {
-        href: "/automate/extending/auto-launch",
-        children: "Auto-launch Configuration",
+        href: "/automate/extending/plugins",
+        children: "Plugins",
+        platform: "new",
       },
       {
         href: "/automate/mcp/overview",
         children: "MCP",
         subLinks: [
-          { href: "/automate/mcp/overview", children: "MCP Overview" },
           {
             href: "/automate/mcp/using-in-kilo-code",
             children: "Using MCP in Kilo Code",

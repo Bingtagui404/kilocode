@@ -1,5 +1,5 @@
-import type { Provider as SDK } from "ai"
-import type { LanguageModelV2 } from "@openrouter/ai-sdk-provider"
+import type { LanguageModel, Provider, Provider as SDK } from "ai"
+import type { LanguageModelV3 } from "@openrouter/ai-sdk-provider"
 
 // ============================================================================
 // Authentication Types
@@ -27,10 +27,19 @@ export interface KilocodeProfile {
   email: string
   name?: string
   organizations?: Organization[]
+  selectedOrganizationId?: string
+  hasPersonalAccount?: boolean
 }
 
 export interface KilocodeBalance {
   balance: number
+}
+
+export interface KiloPassState {
+  currentPeriodBaseCreditsUsd: number
+  currentPeriodUsageUsd: number
+  currentPeriodBonusCreditsUsd: number
+  nextBillingAt?: string | null
 }
 
 export interface PollOptions<T> {
@@ -96,6 +105,11 @@ export interface KiloProviderOptions {
   name?: string
 
   /**
+   * Data collection preference for upstream provider routing
+   */
+  dataCollection?: "allow" | "deny"
+
+  /**
    * Custom fetch function
    */
   fetch?: typeof fetch
@@ -138,7 +152,7 @@ export interface CustomLoaderResult {
   /**
    * Custom function to get a model instance
    */
-  getModel?: (sdk: SDK, modelID: string, options?: Record<string, any>) => Promise<LanguageModelV2>
+  getModel?: (sdk: SDK, modelID: string, options?: Record<string, any>) => Promise<LanguageModelV3>
 
   /**
    * Options to merge with provider configuration
@@ -159,5 +173,11 @@ export interface ProviderInfo {
   models: Record<string, any>
 }
 
-// Re-export LanguageModelV2 for convenience
-export type { LanguageModelV2 }
+export type KiloProvider = Provider & {
+  anthropic(modelId: string): LanguageModel
+  openai(modelId: string): LanguageModel
+  openaiCompatible(modelId: string): LanguageModel
+}
+
+// Re-export LanguageModelV3 for convenience
+export type { LanguageModelV3 }

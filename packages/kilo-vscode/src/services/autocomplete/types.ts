@@ -1,15 +1,9 @@
 import * as vscode from "vscode"
 import type { AutocompleteCodeSnippet } from "./continuedev/core/autocomplete/types"
-import type {
-  Position,
-  Range,
-  RangeInFile,
-  TabAutocompleteOptions as CoreTabAutocompleteOptions,
-} from "./continuedev/core"
-import { FileIgnoreController } from "./shims/FileIgnoreController"
-import { ContextRetrievalService } from "./continuedev/core/autocomplete/context/ContextRetrievalService"
-import { VsCodeIde } from "./continuedev/core/vscode-test-harness/src/VSCodeIde"
-import { AutocompleteModel } from "./AutocompleteModel"
+import type { Position, Range, RangeInFile } from "./continuedev/core"
+import type { FileIgnoreController } from "./shims/FileIgnoreController"
+import type { ContextRetrievalService } from "./continuedev/core/autocomplete/context/ContextRetrievalService"
+import type { VsCodeIde } from "./continuedev/core/vscode-test-harness/src/VSCodeIde"
 
 export interface ResponseMetaData {
   cost: number
@@ -26,15 +20,6 @@ export interface AutocompleteSuggestionContext {
   recentlyEditedRanges?: RecentlyEditedRange[]
 }
 
-export interface AutocompleteTabExtensions {
-  template?: string
-  useOtherFiles?: boolean
-  recentlyEditedSimilarityThreshold?: number
-  maxSnippetTokens?: number
-}
-
-export type TabAutocompleteOptions = Partial<CoreTabAutocompleteOptions> & AutocompleteTabExtensions
-
 export interface RecentlyEditedRange extends RangeInFile {
   timestamp: number
   lines: string[]
@@ -47,6 +32,7 @@ export interface AutocompleteInput {
   isUntitledFile: boolean
   completionId: string
   filepath: string
+  languageId?: string
   pos: Position
   recentlyVisitedRanges: AutocompleteCodeSnippet[]
   recentlyEditedRanges: RecentlyEditedRange[]
@@ -59,43 +45,15 @@ export interface AutocompleteInput {
   injectDetails?: string
 }
 
-export interface AutocompleteOutcome extends TabAutocompleteOptions {
-  accepted?: boolean
-  time: number
-  prefix: string
-  suffix: string
-  prompt: string
-  completion: string
-  modelProvider: string
-  modelName: string
-  completionOptions: Record<string, unknown>
-  cacheHit: boolean
-  numLines: number
-  filepath: string
-  gitRepo?: string
-  completionId: string
-  uniqueId: string
-  timestamp: string
-  enabledStaticContextualization?: boolean
-  profileType?: "local" | "platform" | "control-plane"
-}
-
-export interface PromptResult {
-  systemPrompt: string
-  userPrompt: string
-  prefix: string
-  suffix: string
-  completionId: string
-}
-
 // ============================================================================
-// FIM/Hole Filler Completion Types
+// FIM Completion Types
 // ============================================================================
 
 export interface FillInAtCursorSuggestion {
   text: string
   prefix: string
   suffix: string
+  scope: string
 }
 
 export interface MatchingSuggestionResult {
@@ -107,36 +65,23 @@ export interface LLMRetrievalResult extends ResponseMetaData {
   suggestion: FillInAtCursorSuggestion
 }
 
-export interface ChatCompletionResult extends ResponseMetaData {
-  suggestion: FillInAtCursorSuggestion
-}
-
 export interface FimCompletionResult extends ResponseMetaData {
   suggestion: FillInAtCursorSuggestion
 }
 
 export interface FimAutocompletePrompt {
-  strategy: "fim"
   autocompleteInput: AutocompleteInput
   formattedPrefix: string
   prunedSuffix: string
 }
 
-export interface HoleFillerAutocompletePrompt {
-  strategy: "hole_filler"
-  autocompleteInput: AutocompleteInput
-  systemPrompt: string
-  userPrompt: string
-}
-
-export type AutocompletePrompt = FimAutocompletePrompt | HoleFillerAutocompletePrompt
+export type AutocompletePrompt = FimAutocompletePrompt
 
 export interface AutocompleteStatusBarStateProps {
   enabled?: boolean
   snoozed?: boolean
   model?: string
   provider?: string
-  profileName?: string | null
   hasNoUsableProvider?: boolean
   totalSessionCost: number
   completionCount: number
@@ -147,7 +92,6 @@ export interface AutocompleteContext {
   languageId: string
   modelId?: string
   provider?: string
-  strategy?: "fim" | "hole_filler"
 }
 
 export type CacheMatchType = "exact" | "partial_typing" | "backward_deletion"
@@ -163,9 +107,11 @@ export interface LastSuggestionInfo extends AutocompleteContext {
 }
 
 export interface PendingRequest {
+  scope: string
   prefix: string
   suffix: string
   promise: Promise<void>
+  resolve?: () => void
 }
 
 // ============================================================================
@@ -228,25 +174,6 @@ export interface VisibleCodeContext {
 }
 
 // ============================================================================
-// Chat Text Area Autocomplete Types
-// ============================================================================
-
-/**
- * Request for chat text area completion
- */
-export interface ChatCompletionRequest {
-  text: string
-}
-
-/**
- * Result of chat text area completion (distinct from code editor ChatCompletionResult)
- */
-export interface ChatTextCompletionResult {
-  suggestion: string
-  requestId: string
-}
-
-// ============================================================================
 // Conversion Utilities
 // ============================================================================
 
@@ -275,6 +202,7 @@ export function contextToAutocompleteInput(context: AutocompleteSuggestionContex
     isUntitledFile: context.document.isUntitled,
     completionId: crypto.randomUUID(),
     filepath: context.document.uri.fsPath,
+    languageId: context.document.languageId,
     pos: { line: position.line, character: position.character },
     recentlyVisitedRanges,
     recentlyEditedRanges,
@@ -286,6 +214,6 @@ export function contextToAutocompleteInput(context: AutocompleteSuggestionContex
 export interface AutocompleteContextProvider {
   contextService: ContextRetrievalService
   ide: VsCodeIde
-  model: AutocompleteModel
+  modelId: string
   ignoreController?: Promise<FileIgnoreController>
 }

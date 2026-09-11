@@ -1,4 +1,4 @@
-import { IDE, RangeInFileWithContents } from "../.."
+import { Disposable, IDE, RangeInFileWithContents } from "../.."
 import { PrecalculatedLruCache } from "../../util/LruCache"
 import { getFullLanguageName, getParserForFile, getQueryForFile } from "../../util/treeSitter"
 import { findUriInDirs } from "../../util/uri"
@@ -14,13 +14,18 @@ export class ImportDefinitionsService {
     this._getFileInfo.bind(this),
     ImportDefinitionsService.N,
   )
+  private readonly disposable: Disposable | void
 
   constructor(private readonly ide: IDE) {
-    ide.onDidChangeActiveTextEditor((filepath) => {
+    this.disposable = ide.onDidChangeActiveTextEditor((filepath) => {
       this.cache
         .initKey(filepath)
         .catch((e) => console.warn(`Failed to initialize ImportDefinitionService: ${e.message}`))
     })
+  }
+
+  dispose(): void {
+    this.disposable?.dispose()
   }
 
   get(filepath: string): FileInfo | undefined {
@@ -30,6 +35,12 @@ export class ImportDefinitionsService {
   private async _getFileInfo(filepath: string): Promise<FileInfo | null> {
     if (filepath.endsWith(".ipynb")) {
       // Commenting out this line was the solution to https://github.com/continuedev/continue/issues/1463
+      return null
+    }
+
+    // Skip non-file URIs (e.g. output:tasks, vscode:, untitled:) — these are
+    // VS Code virtual documents that have no parseable source.
+    if (/^[a-zA-Z][\w+.-]*:/.test(filepath) && !filepath.startsWith("file:") && !filepath.startsWith("/")) {
       return null
     }
 

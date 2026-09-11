@@ -1,11 +1,14 @@
 import { dict as ar } from "./ar"
 import { dict as br } from "./br"
 import { dict as bs } from "./bs"
+import { dict as nl } from "./nl"
 import { dict as da } from "./da"
 import { dict as de } from "./de"
 import { dict as en } from "./en"
 import { dict as es } from "./es"
+import { dict as fa } from "./fa"
 import { dict as fr } from "./fr"
+import { dict as it } from "./it"
 import { dict as ja } from "./ja"
 import { dict as ko } from "./ko"
 import { dict as no } from "./no"
@@ -13,6 +16,8 @@ import { dict as pl } from "./pl"
 import { dict as ru } from "./ru"
 import { dict as th } from "./th"
 import { dict as zh } from "./zh"
+import { dict as tr } from "./tr"
+import { dict as uk } from "./uk"
 import { dict as zht } from "./zht"
 import { type dict as enDict } from "./en"
 
@@ -20,24 +25,34 @@ const bundles: Record<string, Record<string, string>> = {
   ar,
   br,
   bs,
+  nl,
   da,
   de,
   en,
   es,
+  fa,
   fr,
+  it,
   ja,
   ko,
   no,
   pl,
   ru,
   th,
+  tr,
+  uk,
   zh,
   zht,
 }
 
 function resolveLocale(lang: string): string {
   const lower = lang.toLowerCase()
-  if (lower.startsWith("zh")) return lower.includes("hant") ? "zht" : "zh"
+  if (lower.startsWith("zh")) {
+    if (lower === "zht") return "zht"
+    const traditional =
+      lower.includes("hant") || lower.includes("-tw") || lower.includes("-hk") || lower.includes("-mo")
+    return traditional ? "zht" : "zh"
+  }
   if (lower.startsWith("nb") || lower.startsWith("nn")) return "no"
   if (lower.startsWith("pt")) return "br"
   for (const key of Object.keys(bundles)) {
